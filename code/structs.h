@@ -4,6 +4,14 @@
 #define MAX_HOLES 1000
 #define PERMS 0777 // set access permissions
 
+#define LINK 0
+#define DIRECTORY 1
+#define FILE 2
+
+#define MAX_CFS_FILENAME_SIZE 30
+
+
+
 #include "time.h"
 
 typedef unsigned int uint;
@@ -12,8 +20,8 @@ typedef unsigned long long ull;
 
 typedef struct hole
 {
-  ull start;
-  ull end;
+  size_t start;
+  size_t end;
 } hole;
 
 
@@ -25,16 +33,15 @@ typedef struct hole_table
 
 typedef struct
 {
-  uint id;
-  uint size;
+  size_t size;
   uint type;
-  ull parent_id;
+  size_t parent_offset;
   time_t creation_time;
   time_t access_time;
   time_t modification_time;
 
   uint blocks_using;
-  ull first_block;
+  size_t first_block;
 
   char name[];
 } MDS;
@@ -43,7 +50,7 @@ typedef struct
 
 typedef struct block
 {
-  ull next_block;
+  size_t next_block;
   byte data[];
 } block;
 
@@ -56,19 +63,17 @@ typedef struct superblock
   // uint directories;
 
   uint fd;
+  char cfs_filename[MAX_CFS_FILENAME_SIZE];
 
-  ull root_directory;
-  uint current_size;
+  size_t root_directory;
+  size_t current_size;
 
   uint current_hole_number;
 
-  uint block_size;
-  uint filename_size;
-  uint max_file_size;
+  size_t block_size;
+  size_t filename_size;
+  size_t max_file_size;
   uint max_dir_file_number;
-
-  char cfs_filename[];
-
 } superblock;
 
 
