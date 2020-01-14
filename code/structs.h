@@ -2,6 +2,9 @@
 #define __STRUCTS__
 
 #define MAX_HOLES 1000
+#define PERMS 0777 // set access permissions
+
+#include "time.h"
 
 typedef unsigned int uint;
 typedef unsigned char byte;
@@ -23,7 +26,6 @@ typedef struct hole_table
 typedef struct
 {
   uint id;
-  char name[];
   uint size;
   uint type;
   ull parent_id;
@@ -34,6 +36,7 @@ typedef struct
   uint blocks_using;
   ull first_block;
 
+  char name[];
 } MDS;
 
 
@@ -48,9 +51,11 @@ typedef struct block
 
 typedef struct superblock
 {
-  uint files;
-  uint links;
-  uint directories;
+  // uint files;
+  // uint links;
+  // uint directories;
+
+  uint fd;
 
   ull root_directory;
   uint current_size;
