@@ -152,13 +152,13 @@ int get_option(const char buffer[])
 
 
 
-void initialize_holes(hole_table* holes, int n)
+void initialize_holes(hole_map* holes, int n)
 {
   int i = 0;
   for (; i < n; i++)
   {
-    holes->holes[i].start = 0;
-    holes->holes[i].end = 0;
+    holes->holes_table[i].start = 0;
+    holes->holes_table[i].end = 0;
   }
 }
 
@@ -171,7 +171,6 @@ void print_superblock(superblock* my_superblock)
   printf("cfs_filename = %s\n", my_superblock->cfs_filename);
   printf("root_directory = %lu\n", my_superblock->root_directory);
   printf("current_size = %lu\n", my_superblock->current_size);
-  printf("current_hole_number = %u\n", my_superblock->current_hole_number);
   printf("bs = %ld\n", my_superblock->block_size);
   printf("fns = %lu\n", my_superblock->filename_size);
   printf("cfs = %lu\n", my_superblock->max_file_size);
@@ -180,15 +179,17 @@ void print_superblock(superblock* my_superblock)
 
 
 
-void print_hole_table(hole_table* holes_table)
+void print_hole_table(hole_map* holes)
 {
   printf("\n\nHOLE TABLE\n\n");
+  printf("current_hole_number = %u\n", holes->current_hole_number);
+
   int i = 0;
   for (; i < MAX_HOLES; i++)
   {
-    printf("start = %u, end = %u\n", holes_table->holes[i].start, holes_table->holes[i].end);
+    printf("start = %lu, end = %lu\n", holes->holes_table[i].start, holes->holes_table[i].end);
 
-    if (holes_table->holes[i].end == 0)
+    if (holes->holes_table[i].end == 0)
     {
       return;
     }
@@ -200,13 +201,14 @@ void print_hole_table(hole_table* holes_table)
 void print_MDS(MDS* mds)
 {
   printf("\n\nMDS\n\n");
-  printf("size = %u\n", mds->size);
+  printf("size = %lu\n", mds->size);
   printf("type = %u\n", mds->type);
-  printf("parent_offset = %u\n", mds->parent_offset);
-  printf("creation_time = %u\n", mds->creation_time);
-  printf("access_time = %u\n", mds->access_time);
-  printf("modification_time = %u\n", mds->modification_time);
+  printf("number_of_hard_links = %u\n", mds->number_of_hard_links);
+  printf("parent_offset = %lu\n", mds->parent_offset);
+  printf("creation_time = %lu\n", mds->creation_time);
+  printf("access_time = %lu\n", mds->access_time);
+  printf("modification_time = %lu\n", mds->modification_time);
   printf("blocks_using = %u\n", mds->blocks_using);
-  printf("first_block = %u\n", mds->first_block);
+  printf("first_block = %lu\n", mds->first_block);
   printf("name = %s\n", mds->name);
 }

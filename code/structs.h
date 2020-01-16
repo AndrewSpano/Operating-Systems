@@ -25,16 +25,18 @@ typedef struct hole
 } hole;
 
 
-typedef struct hole_table
+typedef struct hole_map
 {
-  hole holes[MAX_HOLES];
-} hole_table;
+  uint current_hole_number;
+  hole holes_table[MAX_HOLES];
+} hole_map;
 
 
 typedef struct
 {
   size_t size;
   uint type;
+  uint number_of_hard_links;
   size_t parent_offset;
   time_t creation_time;
   time_t access_time;
@@ -67,9 +69,6 @@ typedef struct superblock
 
   size_t root_directory;
   size_t current_size;
-
-  uint current_hole_number;
-
   size_t block_size;
   size_t filename_size;
   size_t max_file_size;
