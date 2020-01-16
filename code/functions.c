@@ -44,7 +44,7 @@ int cfs_create(char* cfs_filename, uint bs, uint fns, uint cfs, uint mdfn)
 
   /* the size of the /root is determined by the size of the structs MDS, + the
      bytes that are needed to store its name */
-  size_t root_header_size = sizeof(MDS) + fns;
+  size_t root_header_size = sizeof(MDS);
 
 
 
@@ -112,8 +112,6 @@ int cfs_create(char* cfs_filename, uint bs, uint fns, uint cfs, uint mdfn)
 
   root_header->blocks_using = 0;
   root_header->first_block = 0;
-  memset(root_header->name, 0, fns);
-  strcpy(root_header->name, "/root");
 
   /* write to the cfs file */
   WRITE_OR_DIE(fd, root_header, root_header_size);
@@ -127,12 +125,12 @@ int cfs_create(char* cfs_filename, uint bs, uint fns, uint cfs, uint mdfn)
   free(my_superblock);
   free(holes);
 
-  int ret = close(fd);
-  if (ret == -1)
-  {
-    perror("close() error in cfs_create()");
-    return -1;
-  }
+  // int ret = close(fd);
+  // if (ret == -1)
+  // {
+  //   perror("close() error in cfs_create()");
+  //   return -1;
+  // }
 
   return fd;
 }
@@ -141,32 +139,32 @@ int cfs_create(char* cfs_filename, uint bs, uint fns, uint cfs, uint mdfn)
 
 
 
-// int cfs_read(int fd)
-// {
-//   superblock* my_superblock = malloc(sizeof(superblock));
-//   hole_map* holes = malloc(sizeof(hole_map));
-//   MDS* my_root = malloc(98);
-//
-//
-//
-//   lseek(fd, 0, SEEK_SET);
-//
-//   int retval = read(fd, my_superblock, sizeof(superblock));
-//
-//   retval = read(fd, holes, sizeof(hole_map));
-//
-//   retval = read(fd, my_root, 94);
-//
-//
-//   print_superblock(my_superblock);
-//   print_hole_table(holes);
-//   print_MDS(my_root);
-//
-//   free(my_root);
-//   free(my_superblock);
-//   free(holes);
-//
-//   close(fd);
-//
-//   return fd;
-// }
+int cfs_read(int fd)
+{
+  superblock* my_superblock = malloc(sizeof(superblock));
+  hole_map* holes = malloc(sizeof(hole_map));
+  MDS* my_root = malloc(98);
+
+
+
+  lseek(fd, 0, SEEK_SET);
+
+  int retval = read(fd, my_superblock, sizeof(superblock));
+
+  retval = read(fd, holes, sizeof(hole_map));
+
+  retval = read(fd, my_root, 94);
+
+
+  print_superblock(my_superblock);
+  print_hole_table(holes);
+  print_MDS(my_root);
+
+  free(my_root);
+  free(my_superblock);
+  free(holes);
+
+  close(fd);
+
+  return fd;
+}

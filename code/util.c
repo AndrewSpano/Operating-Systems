@@ -210,5 +210,4 @@ void print_MDS(MDS* mds)
   printf("modification_time = %lu\n", mds->modification_time);
   printf("blocks_using = %u\n", mds->blocks_using);
   printf("first_block = %lu\n", mds->first_block);
-  printf("name = %s\n", mds->name);
 }

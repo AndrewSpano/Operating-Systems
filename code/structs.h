@@ -34,18 +34,18 @@ typedef struct hole_map
 
 typedef struct
 {
+  uint id;
   size_t size;
   uint type;
   uint number_of_hard_links;
   size_t parent_offset;
+
   time_t creation_time;
   time_t access_time;
   time_t modification_time;
 
   uint blocks_using;
   size_t first_block;
-
-  char name[];
 } MDS;
 
 
