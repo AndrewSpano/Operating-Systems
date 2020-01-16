@@ -50,12 +50,6 @@ typedef struct
 
 
 
-typedef struct Pair
-{
-  size_t offset;
-  char name[];
-} Pair;
-
 
 typedef struct block
 {
