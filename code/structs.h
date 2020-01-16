@@ -54,6 +54,7 @@ typedef struct
 typedef struct block
 {
   size_t next_block;
+  size_t bytes_used;
   byte data[];
 } block;
 
