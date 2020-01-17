@@ -11,6 +11,7 @@
               close(fd);                      \
               return -1;                      \
             }                                 \
+            memset(pointer, 0, size);         \
           })
 
 
@@ -27,6 +28,6 @@
 
 
 int cfs_create(char* cfs_filename, uint bs, uint fns, uint cfs, uint mdfn);
-int cfs_read(int fd);
+int cfs_read(char* cfs_filename, int fd);
 
 #endif

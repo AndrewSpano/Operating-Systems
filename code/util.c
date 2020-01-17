@@ -152,9 +152,57 @@ int get_option(const char buffer[])
 
 
 
-void initialize_holes(hole_map* holes, int n)
+
+/* function used to navigate through directory data blocks */
+size_t* pointer_to_offset(char* pointer, uint fns)
 {
-  int i = 0;
+  char* name = pointer;
+  name += fns;
+
+  size_t* return_address = (size_t *) name;
+
+  return return_address;
+}
+
+
+/* function used to navigate through directory data blocks */
+char* pointer_to_next_name(char* pointer, uint fns)
+{
+  size_t* offset = pointer_to_offset(pointer, fns);
+  offset++;
+
+  char* return_address = (char *) offset;
+
+  return return_address;
+}
+
+
+
+/* ----------------------------  INITIALIZATION FUNCTIONS  --------------------------------- */
+
+
+void initialize_superblock(superblock* my_superblock, char* cfs_filename, int fd, size_t root_directory_offset, size_t current_size, uint bs, uint fns, uint cfs, uint mdfn)
+{
+  my_superblock->total_entities = 3;
+  my_superblock->fd = fd;
+  my_superblock->root_directory = root_directory_offset;
+  my_superblock->current_size = current_size;
+  my_superblock->block_size = bs;
+  my_superblock->filename_size = fns;
+  my_superblock->max_file_size = cfs;
+  my_superblock->max_dir_file_number = mdfn;
+  strcpy(my_superblock->cfs_filename, cfs_filename);
+}
+
+
+
+void initialize_holes(hole_map* holes, uint n, uint current_holes, size_t hole_start)
+{
+  holes->current_hole_number = current_holes;
+  holes->holes_table[0].start = hole_start;
+  holes->holes_table[0].end = 0;
+
+  int i = 1;
   for (; i < n; i++)
   {
     holes->holes_table[i].start = 0;
@@ -164,11 +212,59 @@ void initialize_holes(hole_map* holes, int n)
 
 
 
+void initialize_MDS(MDS* mds, uint id, uint type, uint number_of_hard_links, uint blocks_using, size_t size, size_t parent_offset, size_t first_block)
+{
+  mds->id = id;
+  mds->type = type;
+  mds->number_of_hard_links = number_of_hard_links;
+  mds->blocks_using = blocks_using;
+
+  mds->size = size;
+  mds->parent_offset = parent_offset;
+  mds->first_block = first_block;
+
+  time_t my_time = time(NULL);
+  mds->creation_time = my_time;
+  mds->access_time = my_time;
+  mds->modification_time = my_time;
+}
+
+
+
+void initialize_Directory_Data_Block(Block* block, uint fns, size_t self_offset, size_t parent_offset)
+{
+  block->next_block = 0;
+
+  char* name = (char *) block->data;
+  size_t* offset = pointer_to_offset(name, fns);
+
+  strcpy(name, "./");
+  *offset = self_offset;
+
+  name = pointer_to_next_name(name, fns);
+  offset = pointer_to_offset(name, fns);
+
+  strcpy(name, "../");
+  *offset = parent_offset;
+
+  /* we have currently stored 2 directories (./ and ../, and their offsets) */
+  block->bytes_used = 2 * fns + 2 * sizeof(size_t);
+}
+
+
+
+
+
+
+/* --------------------------------  PRINT FUNCTIONS --------------------------------------- */
+
+
 void print_superblock(superblock* my_superblock)
 {
   printf("\n\nSUPERBLOCK\n\n");
   printf("fd = %d\n", my_superblock->fd);
   printf("cfs_filename = %s\n", my_superblock->cfs_filename);
+  printf("total_entities = %u\n", my_superblock->total_entities);
   printf("root_directory = %lu\n", my_superblock->root_directory);
   printf("current_size = %lu\n", my_superblock->current_size);
   printf("bs = %ld\n", my_superblock->block_size);
@@ -201,6 +297,7 @@ void print_hole_table(hole_map* holes)
 void print_MDS(MDS* mds)
 {
   printf("\n\nMDS\n\n");
+  printf("id = %u\n", mds->id);
   printf("size = %lu\n", mds->size);
   printf("type = %u\n", mds->type);
   printf("number_of_hard_links = %u\n", mds->number_of_hard_links);
@@ -210,4 +307,27 @@ void print_MDS(MDS* mds)
   printf("modification_time = %lu\n", mds->modification_time);
   printf("blocks_using = %u\n", mds->blocks_using);
   printf("first_block = %lu\n", mds->first_block);
+}
+
+
+
+void print_Directory_Data_Block(Block* block, uint fns)
+{
+  printf("\n\nBLOCK\n\n");
+
+  size_t size_of_pair = fns + sizeof(size_t);
+  uint pairs = block->bytes_used / size_of_pair;
+
+
+  char* name = (char *) block->data;
+  size_t* offset = pointer_to_offset(name, fns);
+
+  int i = 0;
+  for (; i < pairs; i++)
+  {
+    printf("Directory name: %s, offset: %lu\n", name, *offset);
+
+    name = pointer_to_next_name(name, fns);
+    offset = pointer_to_offset(name, fns);
+  }
 }

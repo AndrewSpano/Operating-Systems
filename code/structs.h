@@ -35,40 +35,37 @@ typedef struct hole_map
 typedef struct
 {
   uint id;
-  size_t size;
   uint type;
   uint number_of_hard_links;
+  uint blocks_using;
+
+  size_t size;
   size_t parent_offset;
+  size_t first_block;
 
   time_t creation_time;
   time_t access_time;
   time_t modification_time;
-
-  uint blocks_using;
-  size_t first_block;
 } MDS;
 
 
 
 
-typedef struct block
+typedef struct Block
 {
   size_t next_block;
   size_t bytes_used;
   byte data[];
-} block;
+} Block;
 
 
 
 typedef struct superblock
 {
-  // uint files;
-  // uint links;
-  // uint directories;
-
   uint fd;
   char cfs_filename[MAX_CFS_FILENAME_SIZE];
 
+  uint total_entities;
   size_t root_directory;
   size_t current_size;
   size_t block_size;
