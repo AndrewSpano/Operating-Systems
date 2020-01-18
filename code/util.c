@@ -270,28 +270,13 @@ void initialize_Directory_Data_Block(Block* block, size_t fns, size_t self_offse
 
 superblock* get_superblock(int fd)
 {
-  superblock* my_superblock = malloc(sizeof(superblock));
-  if (my_superblock == NULL)
-  {
-    perror("malloc() error in get_superblock()");
-    return NULL;
-  }
+  superblock* my_superblock = NULL;
 
-  off_t new_position = lseek(fd, 0, SEEK_SET);
-  if(new_position == (off_t) -1)
-  {
-    perror("lseek() error in get_superblock()");
-    free(my_superblock);
-    return NULL;
-  }
+  MALLOC_OR_DIE_2(my_superblock, sizeof(superblock));
 
-  ssize_t retval = read(fd, my_superblock, sizeof(superblock));
-  if (retval != sizeof(superblock))
-  {
-    perror("read() error in get_superblock()");
-    free(my_superblock);
-    return NULL;
-  }
+  LSEEK_OR_DIE_2(fd, 0, SEEK_SET, my_superblock);
+
+  READ_OR_DIE(fd, my_superblock, sizeof(superblock));
 
   return my_superblock;
 }
@@ -299,28 +284,13 @@ superblock* get_superblock(int fd)
 
 hole_map* get_hole_map(int fd)
 {
-  hole_map* holes = malloc(sizeof(hole_map));
-  if (holes == NULL)
-  {
-    perror("malloc() error in get_hole_map()");
-    return NULL;
-  }
+  hole_map* holes = NULL;
 
-  off_t new_position = lseek(fd, sizeof(superblock), SEEK_SET);
-  if(new_position == (off_t) -1)
-  {
-    perror("lseek() error in get_hole_map()");
-    free(holes);
-    return NULL;
-  }
+  MALLOC_OR_DIE_2(holes, sizeof(hole_map));
 
-  ssize_t retval = read(fd, holes, sizeof(hole_map));
-  if (retval != sizeof(hole_map))
-  {
-    perror("read() error in get_hole_map()");
-    free(holes);
-    return NULL;
-  }
+  LSEEK_OR_DIE_2(fd, sizeof(superblock), SEEK_SET, holes);
+
+  READ_OR_DIE(fd, holes, sizeof(hole_map));
 
   return holes;
 }
@@ -328,28 +298,13 @@ hole_map* get_hole_map(int fd)
 
 MDS* get_MDS(int fd, size_t offset)
 {
-  MDS* mds = malloc(sizeof(MDS));
-  if (mds == NULL)
-  {
-    perror("malloc() error in get_MDS()");
-    return NULL;
-  }
+  MDS* mds = NULL;
 
-  off_t new_position = lseek(fd, offset, SEEK_SET);
-  if(new_position == (off_t) -1)
-  {
-    perror("lseek() error in get_MDS()");
-    free(mds);
-    return NULL;
-  }
+  MALLOC_OR_DIE_2(mds, sizeof(MDS));
 
-  ssize_t retval = read(fd, mds, sizeof(MDS));
-  if (retval != sizeof(MDS))
-  {
-    perror("read() error in get_MDS()");
-    free(mds);
-    return NULL;
-  }
+  LSEEK_OR_DIE_2(fd, offset, SEEK_SET, mds);
+
+  READ_OR_DIE(fd, mds, sizeof(MDS));
 
   return mds;
 }
@@ -357,28 +312,13 @@ MDS* get_MDS(int fd, size_t offset)
 
 Block* get_Block(int fd, size_t block_size, size_t offset)
 {
-  Block* block = malloc(block_size);
-  if (block == NULL)
-  {
-    perror("malloc() error in get_Block()");
-    return NULL;
-  }
+  Block* block = NULL;
 
-  off_t new_position = lseek(fd, offset, SEEK_SET);
-  if(new_position == (off_t) -1)
-  {
-    perror("lseek() error in get_Block()");
-    free(block);
-    return NULL;
-  }
+  MALLOC_OR_DIE_2(block, block_size);
 
-  ssize_t retval = read(fd, block, block_size);
-  if (retval != block_size)
-  {
-    perror("read() error in get_Block()");
-    free(block);
-    return NULL;
-  }
+  LSEEK_OR_DIE_2(fd, offset, SEEK_SET, block);
+
+  READ_OR_DIE(fd, block, block_size);
 
   return block;
 }
