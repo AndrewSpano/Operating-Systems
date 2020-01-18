@@ -21,6 +21,7 @@
             perror("malloc() error");          \
             return NULL;                       \
           }                                    \
+          memset(pointer, 0, size);            \
         })
 
 
