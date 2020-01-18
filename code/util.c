@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include "util.h"
 
@@ -152,6 +155,10 @@ int get_option(const char buffer[])
 
 
 
+
+/* -----------------------   NAVIGATORS   --------------------------------- */
+
+
 /* function used to navigate through directory data blocks */
 size_t* pointer_to_offset(char* pointer, size_t fns)
 {
@@ -174,6 +181,9 @@ char* pointer_to_next_name(char* pointer, size_t fns)
 
   return return_address;
 }
+
+
+
 
 
 
@@ -248,6 +258,101 @@ void initialize_Directory_Data_Block(Block* block, size_t fns, size_t self_offse
 
   /* we have currently stored 2 directories (./ and ../, and their offsets) */
   block->bytes_used = 2 * fns + 2 * sizeof(size_t);
+}
+
+
+
+
+
+
+/* --------------------------------  FAST ACCESS  --------------------------------------- */
+
+
+superblock* get_superblock(int fd)
+{
+  superblock* my_superblock = malloc(sizeof(superblock));
+  if (my_superblock == NULL)
+  {
+    perror("malloc() error in get_superblock()");
+    return NULL;
+  }
+
+  lseek(fd, 0, SEEK_SET);
+
+  ssize_t retval = read(fd, my_superblock, sizeof(superblock));
+  if (retval != sizeof(superblock))
+  {
+    perror("read() error in get_superblock()");
+    return NULL;
+  }
+
+  return my_superblock;
+}
+
+
+hole_map* get_hole_map(int fd)
+{
+  hole_map* holes = malloc(sizeof(hole_map));
+  if (holes == NULL)
+  {
+    perror("malloc() error in get_hole_map()");
+    return NULL;
+  }
+
+  lseek(fd, sizeof(superblock), SEEK_SET);
+
+  ssize_t retval = read(fd, holes, sizeof(hole_map));
+  if (retval != sizeof(hole_map))
+  {
+    perror("read() error in get_hole_map()");
+    return NULL;
+  }
+
+  return holes;
+}
+
+
+MDS* get_MDS(int fd, size_t offset)
+{
+  MDS* mds = malloc(sizeof(MDS));
+  if (mds == NULL)
+  {
+    perror("malloc() error in get_MDS()");
+    return NULL;
+  }
+
+  lseek(fd, offset, SEEK_SET);
+
+  ssize_t retval = read(fd, mds, sizeof(MDS));
+  if (retval != sizeof(MDS))
+  {
+    perror("read() error in get_MDS()");
+    return NULL;
+  }
+
+  return mds;
+}
+
+
+Block* get_Block(int fd, size_t block_size, size_t offset)
+{
+  Block* block = malloc(block_size);
+  if (block == NULL)
+  {
+    perror("malloc() error in get_Block()");
+    return NULL;
+  }
+
+  lseek(fd, offset, SEEK_SET);
+
+  ssize_t retval = read(fd, block, block_size);
+  if (retval != block_size)
+  {
+    perror("read() error in get_Block()");
+    return NULL;
+  }
+
+  return block;
 }
 
 

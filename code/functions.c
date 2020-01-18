@@ -10,7 +10,7 @@
 
 
 
-int cfs_create(char* cfs_filename, uint bs, uint fns, uint cfs, uint mdfn)
+int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
 {
 
   int fd = open(cfs_filename, O_CREAT | O_RDWR | O_EXCL, S_IRUSR | S_IWUSR);
@@ -133,28 +133,43 @@ int cfs_create(char* cfs_filename, uint bs, uint fns, uint cfs, uint mdfn)
 
 
 
+int cfs_touch(const char buffer[], int fd)
+{
+  // superblock* my_superblock = get_superblock(fd);
+  //
+  // size_t file_header_size = sizeof(MDS);
+  //
+  // /* create the struct */
+  // MDS* file_header = NULL;
+  // MALLOC_OR_DIE(file_header, file_header_size, fd);
+  //
+  // /* initialize its values */
+  // initialize_MDS(file_header, 2, FILE, 1, 1, file_header_size + bs, superblock_size + hole_map_size, superblock_size + hole_map_size + file_header_size);
+  //
+  // /* write to the cfs file */
+  // WRITE_OR_DIE(fd, file_header, file_header_size);
+  //
+  //
+  //
+  // free(file_header);
+  // free(superblock);
+
+  return 1;
+}
+
+
+
 int cfs_read(char* cfs_filename, int fd)
 {
   fd = open(cfs_filename, O_RDWR | O_EXCL, S_IRUSR | S_IWUSR);
 
-  superblock* my_superblock = malloc(sizeof(superblock));
-  hole_map* holes = malloc(sizeof(hole_map));
-  MDS* my_root = malloc(sizeof(MDS));
+  superblock* my_superblock = get_superblock(fd);
+  size_t bs = my_superblock->block_size;
+  size_t fns = my_superblock->filename_size;
 
-  lseek(fd, 0, SEEK_SET);
-  ssize_t retval = read(fd, my_superblock, sizeof(superblock));
-
-  uint bs = my_superblock->block_size;
-  uint fns = my_superblock->filename_size;
-
-  Block* block = malloc(bs);
-
-
-
-  retval = read(fd, holes, sizeof(hole_map));
-  retval = read(fd, my_root, sizeof(MDS));
-  retval = read(fd, block, bs);
-
+  hole_map* holes = get_hole_map(fd);
+  MDS* my_root = get_MDS(fd, sizeof(superblock) + sizeof(hole_map));
+  Block* block = get_Block(fd, bs, sizeof(superblock) + sizeof(hole_map) + sizeof(MDS));
 
   print_superblock(my_superblock);
   print_hole_table(holes);
@@ -166,7 +181,6 @@ int cfs_read(char* cfs_filename, int fd)
   free(my_superblock);
   free(holes);
 
-  if (retval == -1);
 
   close(fd);
 
