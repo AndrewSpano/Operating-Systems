@@ -4,6 +4,7 @@
 #define MAX_BUFFER_SIZE 512
 
 #include "structs.h"
+#include "macros.h"
 
 
 /* useful functions */
@@ -25,6 +26,12 @@ superblock* get_superblock(int fd);
 hole_map* get_hole_map(int fd);
 MDS* get_MDS(int fd, size_t offset);
 Block* get_Block(int fd, size_t block_size, size_t offset);
+
+/* fast set functions */
+int set_superblock(superblock* superblock, int fd);
+int set_hole_map(hole_map* holes, int fd);
+int set_MDS(MDS* mds, int fd, size_t offset);
+int set_Block(Block* block, int fd, size_t block_size, size_t offset);
 
 /* printing functions */
 void print_superblock(superblock* my_superblock);

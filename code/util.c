@@ -156,7 +156,7 @@ int get_option(const char buffer[])
 
 
 
-/* -----------------------   NAVIGATORS   --------------------------------- */
+/* ---------------------------------   NAVIGATORS   ----------------------------------------- */
 
 
 /* function used to navigate through directory data blocks */
@@ -277,12 +277,19 @@ superblock* get_superblock(int fd)
     return NULL;
   }
 
-  lseek(fd, 0, SEEK_SET);
+  off_t new_position = lseek(fd, 0, SEEK_SET);
+  if(new_position == (off_t) -1)
+  {
+    perror("lseek() error in get_superblock()");
+    free(my_superblock);
+    return NULL;
+  }
 
   ssize_t retval = read(fd, my_superblock, sizeof(superblock));
   if (retval != sizeof(superblock))
   {
     perror("read() error in get_superblock()");
+    free(my_superblock);
     return NULL;
   }
 
@@ -299,12 +306,19 @@ hole_map* get_hole_map(int fd)
     return NULL;
   }
 
-  lseek(fd, sizeof(superblock), SEEK_SET);
+  off_t new_position = lseek(fd, sizeof(superblock), SEEK_SET);
+  if(new_position == (off_t) -1)
+  {
+    perror("lseek() error in get_hole_map()");
+    free(holes);
+    return NULL;
+  }
 
   ssize_t retval = read(fd, holes, sizeof(hole_map));
   if (retval != sizeof(hole_map))
   {
     perror("read() error in get_hole_map()");
+    free(holes);
     return NULL;
   }
 
@@ -321,12 +335,19 @@ MDS* get_MDS(int fd, size_t offset)
     return NULL;
   }
 
-  lseek(fd, offset, SEEK_SET);
+  off_t new_position = lseek(fd, offset, SEEK_SET);
+  if(new_position == (off_t) -1)
+  {
+    perror("lseek() error in get_MDS()");
+    free(mds);
+    return NULL;
+  }
 
   ssize_t retval = read(fd, mds, sizeof(MDS));
   if (retval != sizeof(MDS))
   {
     perror("read() error in get_MDS()");
+    free(mds);
     return NULL;
   }
 
@@ -343,18 +364,78 @@ Block* get_Block(int fd, size_t block_size, size_t offset)
     return NULL;
   }
 
-  lseek(fd, offset, SEEK_SET);
+  off_t new_position = lseek(fd, offset, SEEK_SET);
+  if(new_position == (off_t) -1)
+  {
+    perror("lseek() error in get_Block()");
+    free(block);
+    return NULL;
+  }
 
   ssize_t retval = read(fd, block, block_size);
   if (retval != block_size)
   {
     perror("read() error in get_Block()");
+    free(block);
     return NULL;
   }
 
   return block;
 }
 
+
+
+
+
+/* ----------------------------------  FAST SET  --------------------------------------- */
+
+
+int set_superblock(superblock* superblock, int fd)
+{
+  DIE_IF_NULL(superblock);
+
+  LSEEK_OR_DIE(fd, 0, SEEK_SET);
+
+  WRITE_OR_DIE_2(fd, superblock, sizeof(superblock));
+
+  return 1;
+}
+
+
+int set_hole_map(hole_map* holes, int fd)
+{
+  DIE_IF_NULL(holes);
+
+  LSEEK_OR_DIE(fd, sizeof(superblock), SEEK_SET);
+
+  WRITE_OR_DIE_2(fd, holes, sizeof(holes));
+
+  return 1;
+}
+
+
+int set_MDS(MDS* mds, int fd, size_t offset)
+{
+  DIE_IF_NULL(mds);
+
+  LSEEK_OR_DIE(fd, offset, SEEK_SET);
+
+  WRITE_OR_DIE_2(fd, mds, sizeof(MDS));
+
+  return 1;
+}
+
+
+int set_Block(Block* block, int fd, size_t block_size, size_t offset)
+{
+  DIE_IF_NULL(block);
+
+  LSEEK_OR_DIE(fd, offset, SEEK_SET);
+
+  WRITE_OR_DIE_2(fd, block, block_size);
+
+  return 1;
+}
 
 
 

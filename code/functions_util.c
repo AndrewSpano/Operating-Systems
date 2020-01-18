@@ -6,7 +6,7 @@
 
 
 
-/* insert a pair: <name, offset> to the data block of a directory */
+/* inserts a pair: <name, offset> to the data block of a directory */
 void insert_pair(Block* block, char* insert_name, size_t insert_offset, size_t fns)
 {
   char* name = (char *) block->data;
@@ -41,7 +41,7 @@ void shift_pairs_to_the_left(char* name, uint remaining_pairs, size_t size_of_pa
 
 
 /* remove a pair: <name, offset> from the data block of a directory, while
-   also checking for existing errors. Returns 1 on success, -1 on failure */
+   also checking for existing errors. Returns 1 on success; -1 on failure */
 int remove_pair(Block* block, char* remove_name, size_t fns)
 {
   /* if the data is less than the minimum data for a directory, or if we want

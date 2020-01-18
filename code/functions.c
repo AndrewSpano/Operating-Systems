@@ -13,6 +13,15 @@
 int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
 {
 
+  /* cfs directories have to able to at least contain the ./ and ../
+     directories, therefore the data block size has to at least as big as the
+     space that is needed to store the information for these 2 directories */
+  if (bs < 2 * (fns + sizeof(size_t)))
+  {
+    printf("block size if too small: %lu, or filename_size is too big: %lu\n A directory data block can't contain the basic information for the ./ and ../ directories.\n", bs, fns);
+    return -1;
+  }
+
   int fd = open(cfs_filename, O_CREAT | O_RDWR | O_EXCL, S_IRUSR | S_IWUSR);
 
   /* check is an error occured */
