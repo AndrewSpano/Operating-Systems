@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "functions.h"
+#include "functions2.h"
 #include "util.h"
 #include "list.h"
 
@@ -14,5 +15,10 @@ int main(int argc, char* argv[])
   cfs_read("test.cfs", fd);
 
   printf("\n\n");
+
+
+  size_t off; 
+  off = find_hole("test.cfs", fd, sizeof(MDS));
+  printf("----------->main:%lu\n", off);
   return EXIT_SUCCESS;
 }
