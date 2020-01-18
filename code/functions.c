@@ -133,8 +133,6 @@ int cfs_create(char* cfs_filename, uint bs, uint fns, uint cfs, uint mdfn)
 
 
 
-
-
 int cfs_read(char* cfs_filename, int fd)
 {
   fd = open(cfs_filename, O_RDWR | O_EXCL, S_IRUSR | S_IWUSR);
@@ -167,6 +165,8 @@ int cfs_read(char* cfs_filename, int fd)
   free(my_root);
   free(my_superblock);
   free(holes);
+
+  if (retval == -1);
 
   close(fd);
 

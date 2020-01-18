@@ -6,7 +6,6 @@
 
 
 
-
 /* Extracts the n-th string from a buffer with n or more strings.
    Returns 1 if it succeds, else returns 0. */
 int get_nth_string(char* str, const char buf[], int n)
@@ -154,7 +153,7 @@ int get_option(const char buffer[])
 
 
 /* function used to navigate through directory data blocks */
-size_t* pointer_to_offset(char* pointer, uint fns)
+size_t* pointer_to_offset(char* pointer, size_t fns)
 {
   char* name = pointer;
   name += fns;
@@ -166,7 +165,7 @@ size_t* pointer_to_offset(char* pointer, uint fns)
 
 
 /* function used to navigate through directory data blocks */
-char* pointer_to_next_name(char* pointer, uint fns)
+char* pointer_to_next_name(char* pointer, size_t fns)
 {
   size_t* offset = pointer_to_offset(pointer, fns);
   offset++;
@@ -181,7 +180,7 @@ char* pointer_to_next_name(char* pointer, uint fns)
 /* ----------------------------  INITIALIZATION FUNCTIONS  --------------------------------- */
 
 
-void initialize_superblock(superblock* my_superblock, char* cfs_filename, int fd, size_t root_directory_offset, size_t current_size, uint bs, uint fns, uint cfs, uint mdfn)
+void initialize_superblock(superblock* my_superblock, char* cfs_filename, int fd, size_t root_directory_offset, size_t current_size, size_t bs, size_t fns, size_t cfs, uint mdfn)
 {
   my_superblock->total_entities = 3;
   my_superblock->fd = fd;
@@ -231,7 +230,7 @@ void initialize_MDS(MDS* mds, uint id, uint type, uint number_of_hard_links, uin
 
 
 
-void initialize_Directory_Data_Block(Block* block, uint fns, size_t self_offset, size_t parent_offset)
+void initialize_Directory_Data_Block(Block* block, size_t fns, size_t self_offset, size_t parent_offset)
 {
   block->next_block = 0;
 
@@ -311,7 +310,7 @@ void print_MDS(MDS* mds)
 
 
 
-void print_Directory_Data_Block(Block* block, uint fns)
+void print_Directory_Data_Block(Block* block, size_t fns)
 {
   printf("\n\nBLOCK\n\n");
 
