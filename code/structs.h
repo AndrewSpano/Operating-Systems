@@ -20,8 +20,8 @@ typedef unsigned long long ull;
 
 typedef struct hole
 {
-  size_t start;
-  size_t end;
+  off_t start;
+  off_t end;
 } hole;
 
 
@@ -40,8 +40,8 @@ typedef struct
   uint blocks_using;
 
   size_t size;
-  size_t parent_offset;
-  size_t first_block;
+  off_t parent_offset;
+  off_t first_block;
 
   time_t creation_time;
   time_t access_time;
@@ -53,7 +53,7 @@ typedef struct
 
 typedef struct Block
 {
-  size_t next_block;
+  off_t next_block;
   size_t bytes_used;
   byte data[];
 } Block;
@@ -66,7 +66,7 @@ typedef struct superblock
   char cfs_filename[MAX_CFS_FILENAME_SIZE];
 
   uint total_entities;
-  size_t root_directory;
+  off_t root_directory;
   size_t current_size;
   size_t block_size;
   size_t filename_size;

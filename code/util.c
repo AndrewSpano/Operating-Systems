@@ -160,12 +160,12 @@ int get_option(const char buffer[])
 
 
 /* function used to navigate through directory data blocks */
-size_t* pointer_to_offset(char* pointer, size_t fns)
+off_t* pointer_to_offset(char* pointer, size_t fns)
 {
   char* name = pointer;
   name += fns;
 
-  size_t* return_address = (size_t *) name;
+  off_t* return_address = (off_t *) name;
 
   return return_address;
 }
@@ -174,7 +174,7 @@ size_t* pointer_to_offset(char* pointer, size_t fns)
 /* function used to navigate through directory data blocks */
 char* pointer_to_next_name(char* pointer, size_t fns)
 {
-  size_t* offset = pointer_to_offset(pointer, fns);
+  off_t* offset = pointer_to_offset(pointer, fns);
   offset++;
 
   char* return_address = (char *) offset;
@@ -190,7 +190,7 @@ char* pointer_to_next_name(char* pointer, size_t fns)
 /* ----------------------------  INITIALIZATION FUNCTIONS  --------------------------------- */
 
 
-void initialize_superblock(superblock* my_superblock, char* cfs_filename, int fd, size_t root_directory_offset, size_t current_size, size_t bs, size_t fns, size_t cfs, uint mdfn)
+void initialize_superblock(superblock* my_superblock, char* cfs_filename, int fd, off_t root_directory_offset, size_t current_size, size_t bs, size_t fns, size_t cfs, uint mdfn)
 {
   my_superblock->total_entities = 3;
   my_superblock->fd = fd;
@@ -205,7 +205,7 @@ void initialize_superblock(superblock* my_superblock, char* cfs_filename, int fd
 
 
 
-void initialize_holes(hole_map* holes, uint n, uint current_holes, size_t hole_start)
+void initialize_holes(hole_map* holes, uint n, uint current_holes, off_t hole_start)
 {
   holes->current_hole_number = current_holes;
   holes->holes_table[0].start = hole_start;
@@ -221,7 +221,7 @@ void initialize_holes(hole_map* holes, uint n, uint current_holes, size_t hole_s
 
 
 
-void initialize_MDS(MDS* mds, uint id, uint type, uint number_of_hard_links, uint blocks_using, size_t size, size_t parent_offset, size_t first_block)
+void initialize_MDS(MDS* mds, uint id, uint type, uint number_of_hard_links, uint blocks_using, size_t size, off_t parent_offset, off_t first_block)
 {
   mds->id = id;
   mds->type = type;
@@ -240,12 +240,12 @@ void initialize_MDS(MDS* mds, uint id, uint type, uint number_of_hard_links, uin
 
 
 
-void initialize_Directory_Data_Block(Block* block, size_t fns, size_t self_offset, size_t parent_offset)
+void initialize_Directory_Data_Block(Block* block, size_t fns, off_t self_offset, off_t parent_offset)
 {
   block->next_block = 0;
 
   char* name = (char *) block->data;
-  size_t* offset = pointer_to_offset(name, fns);
+  off_t* offset = pointer_to_offset(name, fns);
 
   strcpy(name, "./");
   *offset = self_offset;
@@ -296,7 +296,7 @@ hole_map* get_hole_map(int fd)
 }
 
 
-MDS* get_MDS(int fd, size_t offset)
+MDS* get_MDS(int fd, off_t offset)
 {
   MDS* mds = NULL;
 
@@ -310,7 +310,7 @@ MDS* get_MDS(int fd, size_t offset)
 }
 
 
-Block* get_Block(int fd, size_t block_size, size_t offset)
+Block* get_Block(int fd, size_t block_size, off_t offset)
 {
   Block* block = NULL;
 
@@ -354,7 +354,7 @@ int set_hole_map(hole_map* holes, int fd)
 }
 
 
-int set_MDS(MDS* mds, int fd, size_t offset)
+int set_MDS(MDS* mds, int fd, off_t offset)
 {
   DIE_IF_NULL(mds);
 
@@ -366,7 +366,7 @@ int set_MDS(MDS* mds, int fd, size_t offset)
 }
 
 
-int set_Block(Block* block, int fd, size_t block_size, size_t offset)
+int set_Block(Block* block, int fd, size_t block_size, off_t offset)
 {
   DIE_IF_NULL(block);
 
@@ -445,7 +445,7 @@ void print_Directory_Data_Block(Block* block, size_t fns)
 
 
   char* name = (char *) block->data;
-  size_t* offset = pointer_to_offset(name, fns);
+  off_t* offset = pointer_to_offset(name, fns);
 
   int i = 0;
   for (; i < pairs; i++)

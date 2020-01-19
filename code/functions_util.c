@@ -7,14 +7,14 @@
 
 
 /* inserts a pair: <name, offset> to the data block of a directory */
-void insert_pair(Block* block, char* insert_name, size_t insert_offset, size_t fns)
+void insert_pair(Block* block, char* insert_name, off_t insert_offset, size_t fns)
 {
   char* name = (char *) block->data;
   name += block->bytes_used;
 
   /* this part may cause segmentation error, if we write past the block size */
   strcpy(name, insert_name);
-  size_t* offset = pointer_to_offset(name, fns);
+  off_t* offset = pointer_to_offset(name, fns);
   *offset = insert_offset;
 
   size_t pair_size = fns + sizeof(size_t);
@@ -73,7 +73,7 @@ int remove_pair(Block* block, char* remove_name, size_t fns)
 
   /* set data to 0 <=> remove pair */
   memset(name, 0, fns);
-  size_t* offset = pointer_to_offset(name, fns);
+  off_t* offset = pointer_to_offset(name, fns);
   *offset = 0;
 
   if (pairs - i > 0)

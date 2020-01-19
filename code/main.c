@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "functions.h"
+#include "functions2.h"
 #include "util.h"
 #include "list.h"
 

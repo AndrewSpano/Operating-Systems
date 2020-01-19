@@ -12,22 +12,20 @@
 
 //pairnei to megethos tou struct pou theloume na apothikefsoume sto cfs_file
 //kai epistrefei to offset pou xwraei(tripa i telos)
-int find_hole(char* cfs_filename, int fd, size_t my_size)
+off_t find_hole(char* cfs_filename, int fd, size_t my_size)
 {
 
   fd = open(cfs_filename, O_RDWR | O_EXCL, S_IRUSR | S_IWUSR);
 
-  hole_map* holes = malloc(sizeof(hole_map));
+  hole_map* holes = NULL;
+  MALLOC_OR_DIE(holes, sizeof(hole_map), fd);
 
-
-  lseek(fd, sizeof(superblock), SEEK_SET); 
-
-  int retval = read(fd, holes, sizeof(hole_map));
+  holes = get_hole_map(fd);
 
   print_hole_table(holes);
 
   printf("i need to find a spot for %lu size \n", my_size);
-  size_t offset_to_return = 0;
+  off_t offset_to_return = 0;
   int i = 0;
   for (; i < MAX_HOLES; i++)
   {
@@ -42,18 +40,20 @@ int find_hole(char* cfs_filename, int fd, size_t my_size)
       return offset_to_return;
     }
     // printf("start = %lu, end = %lu\n", holes->holes_table[i].start, holes->holes_table[i].end);
-    size_t available_size = holes->holes_table[i].end - holes->holes_table[i].start;
+    off_t available_size = holes->holes_table[i].end - holes->holes_table[i].start;
     printf("available_size = %lu\n", available_size);
 
     if (available_size == my_size) //fits exactly
     {
       offset_to_return = holes->holes_table[i].start;
       holes->holes_table[i].start = holes->holes_table[i].end = 0; //clear hole
+      free(holes);
       return offset_to_return;
     } else if (available_size > my_size) //leaves a hole
     {
       offset_to_return = holes->holes_table[i].start;
       holes->holes_table[i].start += my_size; // shrink hole
+      free(holes);
       return offset_to_return;
     }
   }
@@ -67,13 +67,18 @@ int find_hole(char* cfs_filename, int fd, size_t my_size)
 
 int cfs_mkdir(char * name, uint bs, uint fns, uint cfs, uint mdfn, int fd)
 {
-  //create mds 
-
+  //find a hole for mds 
+  // size_t offset_for_mds = find_hole(name, fd, sizeof(MDS));
+  
   // /* create the struct */
-  // MDS* mds = NULL;
-  // MALLOC_OR_DIE(mds, sizeof(MDS), fd);
+  // MDS* mds = get_MDS(int fd, size_t offset_for_mds); //allocate new mds
+  // MDS* root_header = NULL;
+  // MALLOC_OR_DIE(root_header, root_header_size, fd);
 
-  // /* initialize its values */
+  //  initialize its values 
+  // //edw xreiazomai parent offset 
+  // //kai offset tou first block of data
+  // /* size_t offset_for_data = find_hole(name, fd, sizeof(BLOCK))*/ 
   // initialize_MDS(mds, 3, DIRECTORY, 1, 1, sizeof(MDS) + bs, superblock_size + hole_map_size, superblock_size + hole_map_size + sizeof(MDS));
 
   // /* write to the cfs file */
