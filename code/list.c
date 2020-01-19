@@ -5,7 +5,7 @@
 #include "list.h"
 
 
-NodePtr create_node(char* name, size_t offset, NodePtr prev, NodePtr next)
+NodePtr create_node(char* name, off_t offset, NodePtr prev, NodePtr next)
 {
   NodePtr new_node = malloc(sizeof(node));
   if (new_node == NULL)
@@ -51,7 +51,7 @@ int is_Empty(Stack_List* list)
 
 
 
-int Stack_List_Push(Stack_List* list, char* name, size_t offset)
+int Stack_List_Push(Stack_List* list, char* name, off_t offset)
 {
   if (is_Empty(list))
   {
@@ -110,7 +110,7 @@ int Stack_List_Pop(Stack_List* list)
 
 
 
-int Stack_List_Peek(Stack_List* list, char** name, size_t* offset)
+int Stack_List_Peek(Stack_List* list, char** name, off_t* offset)
 {
   if (is_Empty(list))
   {
