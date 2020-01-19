@@ -138,7 +138,7 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
 
 
 
-int cfs_workwith(char* cfs_filename, Stack_List** list)
+int cfs_workwith(char* cfs_filename, superblock** my_superblock, hole_map** holes, Stack_List** list)
 {
   /* open file just for reading to see if it exists */
   int fd = open(cfs_filename, O_RDONLY, READ_WRITE_USER_GROUP_PERMS);
@@ -168,20 +168,55 @@ int cfs_workwith(char* cfs_filename, Stack_List** list)
     return -1;
   }
 
+
+
+  /* get the superblock so that we don't have to read it from the file every
+     time we use a cfs_function */
+  *my_superblock = get_superblock(fd);
+  if (*my_superblock == NULL)
+  {
+    perror("get_superblock() returned NULL in cfs_workwith()");
+    CLOSE_OR_DIE(fd);
+
+    return -1;
+  }
+
+  /* same as above, just for the holes map */
+  *holes = get_hole_map(fd);
+  if (*holes == NULL)
+  {
+    perror("get_hole_map() returned NULL in cfs_workwith()");
+    free(my_superblock);
+    CLOSE_OR_DIE(fd);
+
+    return -1;
+  }
+
   /* create the list that will be used to manage the paths */
   *list = create_List();
   /* check if the creation of the list fails */
   if (*list == NULL)
   {
     printf("Unexpected error in create_List().\n");
+    free(my_superblock);
+    free(holes);
     CLOSE_OR_DIE(fd);
 
     return -1;
   }
 
   /* name of the root directory */
-  char* root_name = NULL;
-  MALLOC_OR_DIE(root_name, 5, fd);
+  char* root_name = malloc(5 * sizeof(char));
+  if (root_name == NULL)
+  {
+    printf("Unexpected malloc() error in create_List().\n");
+    free(my_superblock);
+    free(holes);
+    Stack_List_Destroy(list);
+    CLOSE_OR_DIE(fd);
+
+    return -1;
+  }
   strcpy(root_name, "root");
 
   /* calculate the position of the root MDS */
@@ -198,6 +233,8 @@ int cfs_workwith(char* cfs_filename, Stack_List** list)
 
     return -1;
   }
+
+
 
   return fd;
 }
