@@ -137,8 +137,75 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
     return -1;
   }
 
+  return 1;
+}
+
+
+
+int cfs_workwith(char* cfs_filename, Stack_List** list)
+{
+  /* open file just for reading to see if it exists */
+  int fd = open(cfs_filename, O_RDONLY, READ_WRITE_USER_GROUP_PERMS);
+  if (fd == -1)
+  {
+    if (errno == ENOENT)
+    {
+      printf("cfs file: %s does not exist.\n", cfs_filename);
+    }
+    else
+    {
+      perror("open() error in cfs_workwith()");
+    }
+
+    return -1;
+  }
+
+  /* close the file opened only for reading */
+  CLOSE_OR_DIE(fd);
+
+
+  /* now open it for both reading and writing, to work with it */
+  fd = open(cfs_filename, O_RDWR | O_EXCL, S_IRUSR | S_IWUSR);
+  if (fd == -1)
+  {
+    perror("open() error in correct opening of cfs_workwith()");
+    return -1;
+  }
+
+  /* create the list that will be used to manage the paths */
+  *list = create_List();
+  /* check if the creation of the list fails */
+  if (*list == NULL)
+  {
+    printf("Unexpected error in create_List().\n");
+    CLOSE_OR_DIE(fd);
+
+    return -1;
+  }
+
+  /* name of the root directory */
+  char* root_name = NULL;
+  MALLOC_OR_DIE(root_name, 5, fd);
+  strcpy(root_name, "root");
+
+  /* calculate the position of the root MDS */
+  off_t root_position = sizeof(superblock) + sizeof(hole_map);
+
+  /* push it into the stack list, while also checking for any failure */
+  int ret = Stack_List_Push(*list, root_name, root_position);
+  if (ret == -1)
+  {
+    /* pushing failed for some reason, so free() the allocated memory and exit */
+    Stack_List_Destroy(list);
+    perror("Unexpected error");
+    CLOSE_OR_DIE(fd);
+
+    return -1;
+  }
+
   return fd;
 }
+
 
 
 
@@ -170,8 +237,6 @@ int cfs_touch(const char buffer[], int fd)
 
 int cfs_read(char* cfs_filename, int fd)
 {
-  fd = open(cfs_filename, O_RDWR | O_EXCL, S_IRUSR | S_IWUSR);
-
   superblock* my_superblock = get_superblock(fd);
   size_t bs = my_superblock->block_size;
   size_t fns = my_superblock->filename_size;
@@ -189,9 +254,6 @@ int cfs_read(char* cfs_filename, int fd)
   free(my_root);
   free(my_superblock);
   free(holes);
-
-
-  close(fd);
 
   return fd;
 }

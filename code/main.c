@@ -12,9 +12,13 @@
 int main(int argc, char* argv[])
 {
 
-  int fd = cfs_create("test.cfs", 512, 30, 5000, 10);
+  Stack_List* list = NULL;
+
+  int retval = cfs_create("test.cfs", 512, 30, 5000, 10);
+  int fd = cfs_workwith("test.cfs", &list);
   cfs_read("test.cfs", fd);
 
   printf("\n\n");
+  Stack_List_Destroy(&list);
   return EXIT_SUCCESS;
 }

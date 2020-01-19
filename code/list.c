@@ -34,6 +34,11 @@ void node_destroy(NodePtr* node)
 Stack_List* create_List(void)
 {
   Stack_List* new_List = malloc(sizeof(Stack_List));
+  if (new_List == NULL)
+  {
+    perror("malloc");
+    return NULL;
+  }
   new_List->head = NULL;
   new_List->tail = NULL;
   new_List->size = 0;
@@ -184,7 +189,10 @@ int Stack_List_Destroy(Stack_List** list)
     return 0;
   }
 
+
   while (Stack_List_Pop(*list));
+
+
 
   (*list)->head = NULL;
   (*list)->tail = NULL;

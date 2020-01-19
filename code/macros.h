@@ -1,3 +1,17 @@
+/* macro used to close a file and check for some error */
+#define CLOSE_OR_DIE(fd)                               \
+        ({                                             \
+          int ret = close(fd);                         \
+          if (ret == -1)                               \
+          {                                            \
+            perror("close() error");                   \
+            return -1;                                 \
+          }                                            \
+        })
+
+
+
+
 /* malloc() macro used to avoid hard code checks */
 #define MALLOC_OR_DIE(pointer, size, fd)      \
         ({                                    \
@@ -5,7 +19,7 @@
           if (pointer == NULL)                \
           {                                   \
             perror("malloc() error");         \
-            close(fd);                        \
+            CLOSE_OR_DIE(fd);                 \
             return -1;                        \
           }                                   \
           memset(pointer, 0, size);           \

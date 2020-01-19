@@ -3,6 +3,8 @@
 
 #define MAX_HOLES 1000
 #define PERMS 0777 // set access permissions
+#define READ_WRITE_USER_GROUP_PERMS 0660
+
 
 #define LINK 0
 #define DIRECTORY 1
