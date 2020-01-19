@@ -179,7 +179,7 @@ int is_parameter(const char* str)
     return 0;
   }
 
-  return str[0] == '-';
+  return (str[0] == '-' && str[1] != '\0');
 }
 
 
@@ -200,6 +200,36 @@ int is_positive_integer(const char* str)
 }
 
 
+/* returns positive value if str has a character that does not exists in flags;
+   else returns 0 */
+int contains_unknown_flag(const char* str, const char* flags)
+{
+  int len = strlen(str);
+  int number_of_flags = strlen(flags);
+
+  int i = 1;
+  for (; i < len; i++)
+  {
+    int j = 0;
+    int counter = 0;
+    for (; j < number_of_flags; j++)
+    {
+      if (str[i] == flags[j])
+      {
+        counter++;
+      }
+    }
+
+    if (counter < 1)
+    {
+      return i;
+    }
+  }
+
+  return 0;
+}
+
+
 
 
 /* --------------------------------       GET FUNCTION PARAMETERS           ----------------------------------- */
@@ -210,10 +240,19 @@ int is_positive_integer(const char* str)
 int get_cfs_touch_parameters(const char buffer[], int* flag_a, int* flag_m)
 {
   char str[MAX_BUFFER_SIZE] = {0};
+  char flags[3] = {0};
+  strcpy(flags, "am");
 
-  int index = 1;
+  int index = 2;
   while (get_nth_string(str, buffer, index) && is_parameter(str))
   {
+    int exists = contains_unknown_flag(str, flags);
+    if (exists)
+    {
+      printf("The parameter '%c' given in the option %s does not exist. Available options are -a and -m\n", str[exists], str);
+      return 0;
+    }
+
     if (char_exists_in_string(str, 'a'))
     {
       *flag_a = 1;
@@ -222,6 +261,7 @@ int get_cfs_touch_parameters(const char buffer[], int* flag_a, int* flag_m)
     {
       *flag_m = 1;
     }
+
     index++;
   }
 
@@ -233,10 +273,18 @@ int get_cfs_touch_parameters(const char buffer[], int* flag_a, int* flag_m)
 int get_cfs_ls_parameters(const char buffer[], int* flag_a, int* flag_r, int* flag_l, int* flag_u, int* flag_d, int* flag_h)
 {
   char str[MAX_BUFFER_SIZE] = {0};
+  char flags[7] = {0};
+  strcpy(flags, "arludh");
 
-  int index = 1;
+  int index = 2;
   while (get_nth_string(str, buffer, index) && is_parameter(str))
   {
+    int exists = contains_unknown_flag(str, flags);
+    if (exists)
+    {
+      printf("The parameter '%c' given in the option %s does not exist. Available options are -a, -r, -l, -u, -d and -h\n", str[exists], str);
+      return 0;
+    }
     if (char_exists_in_string(str, 'a'))
     {
       *flag_a = 1;
@@ -273,10 +321,18 @@ int get_cfs_ls_parameters(const char buffer[], int* flag_a, int* flag_r, int* fl
 int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_R)
 {
   char str[MAX_BUFFER_SIZE] = {0};
+  char flags[3] = {0};
+  strcpy(flags, "iR");
 
-  int index = 1;
+  int index = 2;
   while (get_nth_string(str, buffer, index) && is_parameter(str))
   {
+    int exists = contains_unknown_flag(str, flags);
+    if (exists)
+    {
+      printf("The parameter '%c' given in the option %s does not exist. Available options are -i and -R\n", str[exists], str);
+      return 0;
+    }
     if (char_exists_in_string(str, 'i'))
     {
       *flag_i = 1;

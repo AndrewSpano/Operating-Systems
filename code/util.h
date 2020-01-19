@@ -13,6 +13,7 @@ int get_option(const char buffer[]);
 int char_exists_in_string(const char* str, char x);
 int is_parameter(const char* str);
 int is_positive_integer(const char* str);
+int contains_unknown_flag(const char* str, const char* flags);
 
 /* get the parameters of functions */
 int get_cfs_touch_parameters(const char buffer[], int* flag_a, int* flag_m);
