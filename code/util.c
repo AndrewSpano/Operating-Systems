@@ -709,7 +709,7 @@ void print_superblock(superblock* my_superblock)
 void print_hole_table(hole_map* holes)
 {
   printf("\n\nHOLE TABLE\n\n");
-  printf("current_hole_number = %u\n", holes->current_hole_number);
+  printf("current_hole_number = %u\n\n", holes->current_hole_number);
 
   int i = 0;
   for (; i < MAX_HOLES; i++)

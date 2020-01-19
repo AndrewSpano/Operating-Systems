@@ -24,20 +24,26 @@ void insert_pair(Block* block, char* insert_name, off_t insert_offset, size_t fn
 
 
 /* shift the pairs of the data block of a directory, one place to the left */
-void shift_pairs_to_the_left(char* name, uint remaining_pairs, size_t size_of_pair, size_t fns)
+int shift_pairs_to_the_left(char* name, uint remaining_pairs, size_t size_of_pair, size_t fns)
 {
   size_t size_of_remaining_pairs = remaining_pairs * size_of_pair;
   /* temp array used to store the pairs */
-  void* temp_pairs = malloc(size_of_remaining_pairs);
+  void* temp_pairs = NULL;
+  MALLOC_OR_DIE_3(temp_pairs, size_of_remaining_pairs);
+
 
   char* next_name = pointer_to_next_name(name, fns);
 
   /* copy to the temporary space */
   memcpy(temp_pairs, next_name, size_of_remaining_pairs);
+  /* "delete" the previous values */
+  memset(next_name, 0, size_of_remaining_pairs);
   /* copy in the right place */
   memcpy(name, temp_pairs, size_of_remaining_pairs);
 
   free(temp_pairs);
+
+  return 1;
 }
 
 
@@ -139,4 +145,49 @@ off_t get_offset(Block* block, char* target_name, size_t fns)
   }
 
   return 0;
+}
+
+
+
+
+
+/* function that shifts the holes of the hole table 1 position to the left */
+int shift_holes_to_the_left(hole_map* holes, uint hole_position)
+{
+  uint holes_remaining = holes->current_hole_number - hole_position - 1;
+  size_t size_of_remaining_holes = holes_remaining * sizeof(hole);
+
+  void* temp_holes = NULL;
+  MALLOC_OR_DIE_3(temp_holes, size_of_remaining_holes);
+
+  memcpy(temp_holes, &(holes->holes_table[hole_position + 1]), size_of_remaining_holes);
+
+  memset(&(holes->holes_table[hole_position + 1]), 0, size_of_remaining_holes);
+
+  memcpy(&(holes->holes_table[hole_position ]), temp_holes, size_of_remaining_holes);
+
+  free(temp_holes);
+
+  return 1;
+}
+
+
+/* function that shifts the holes of the hole table 1 position to the left */
+int shift_holes_to_the_right(hole_map* holes, uint hole_position)
+{
+  uint holes_remaining = holes->current_hole_number - hole_position;
+  size_t size_of_remaining_holes = holes_remaining * sizeof(hole);
+
+  void* temp_holes = NULL;
+  MALLOC_OR_DIE_3(temp_holes, size_of_remaining_holes);
+
+  memcpy(temp_holes, &(holes->holes_table[hole_position]), size_of_remaining_holes);
+
+  memset(&(holes->holes_table[hole_position]), 0, size_of_remaining_holes);
+
+  memcpy(&(holes->holes_table[hole_position + 1]), temp_holes, size_of_remaining_holes);
+
+  free(temp_holes);
+
+  return 1;
 }
