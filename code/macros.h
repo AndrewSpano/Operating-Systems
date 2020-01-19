@@ -26,7 +26,8 @@
         })
 
 
-/* same as above, just returns NULL instead of -1 on failure */
+/* same as above, just returns NULL instead of -1 on failure and does not
+   close() a file */
 #define MALLOC_OR_DIE_2(pointer, size)         \
         ({                                     \
           pointer = malloc(size);              \
@@ -34,6 +35,19 @@
           {                                    \
             perror("malloc() error");          \
             return NULL;                       \
+          }                                    \
+          memset(pointer, 0, size);            \
+        })
+
+
+/* same as above, just returns 0 instead of NULL on failure */
+#define MALLOC_OR_DIE_3(pointer, size)         \
+        ({                                     \
+          pointer = malloc(size);              \
+          if (pointer == NULL)                 \
+          {                                    \
+            perror("malloc() error");          \
+            return 0;                          \
           }                                    \
           memset(pointer, 0, size);            \
         })

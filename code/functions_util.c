@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "functions_util.h"
+#include "util.h"
 
 
 

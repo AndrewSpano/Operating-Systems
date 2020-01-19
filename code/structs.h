@@ -11,6 +11,12 @@
 #define FILE 2
 
 #define MAX_CFS_FILENAME_SIZE 30
+#define MAX_DIGITS 15
+
+#define DEFAULT_BLOCK_SIZE 512
+#define DEFAULT_FNS 30
+#define DEFAULT_CFS 4096
+#define DEFAULT_MDFN 69
 
 
 

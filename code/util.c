@@ -153,6 +153,222 @@ int get_option(const char buffer[])
 }
 
 
+/* returns 1 if a character exists in a substring; else returns 0 */
+int char_exists_in_string(const char* str, char x)
+{
+  uint len = strlen(str);
+  int i = 0;
+  for (; i < len; i++)
+  {
+    if (str[i] == x)
+    {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+
+/* returns 1 if the string given is a parameter (option) string; else returns 0
+   i.e. for cfs_ls, -l is a parameter (option) string */
+int is_parameter(const char* str)
+{
+  if (str == NULL)
+  {
+    return 0;
+  }
+
+  return str[0] == '-';
+}
+
+
+
+
+/* --------------------------------       GET FUNCTION PARAMETERS           ----------------------------------- */
+
+
+
+/* pretty much self_explanatory */
+int get_cfs_touch_parameters(const char buffer[], int* flag_a, int* flag_m)
+{
+  char str[MAX_BUFFER_SIZE] = {0};
+
+  int index = 1;
+  while (get_nth_string(str, buffer, index) && is_parameter(str))
+  {
+    if (char_exists_in_string(str, 'a'))
+    {
+      *flag_a = 1;
+    }
+    if (char_exists_in_string(str, 'm'))
+    {
+      *flag_m = 1;
+    }
+    index++;
+  }
+
+  return 1;
+}
+
+
+/* pretty much self_explanatory */
+int get_cfs_ls_parameters(const char buffer[], int* flag_a, int* flag_r, int* flag_l, int* flag_u, int* flag_d, int* flag_h)
+{
+  char str[MAX_BUFFER_SIZE] = {0};
+
+  int index = 1;
+  while (get_nth_string(str, buffer, index) && is_parameter(str))
+  {
+    if (char_exists_in_string(str, 'a'))
+    {
+      *flag_a = 1;
+    }
+    if (char_exists_in_string(str, 'r'))
+    {
+      *flag_r = 1;
+    }
+    if (char_exists_in_string(str, 'l'))
+    {
+      *flag_l = 1;
+    }
+    if (char_exists_in_string(str, 'u'))
+    {
+      *flag_u = 1;
+    }
+    if (char_exists_in_string(str, 'd'))
+    {
+      *flag_d = 1;
+    }
+    if (char_exists_in_string(str, 'h'))
+    {
+      *flag_h = 1;
+    }
+
+    index++;
+  }
+
+  return 1;
+}
+
+
+/* pretty much self_explanatory */
+int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_R)
+{
+  char str[MAX_BUFFER_SIZE] = {0};
+
+  int index = 1;
+  while (get_nth_string(str, buffer, index) && is_parameter(str))
+  {
+    if (char_exists_in_string(str, 'i'))
+    {
+      *flag_i = 1;
+    }
+    if (char_exists_in_string(str, 'R'))
+    {
+      *flag_R = 1;
+    }
+
+    index++;
+  }
+
+  return 1;
+}
+
+/* pretty much self_explanatory */
+int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size_t* cfs, size_t* mdfn, char** cfs_filename)
+{
+  char str[MAX_BUFFER_SIZE] = {0};
+
+  /* flag to make sure no parameter is given twice or more */
+  int flag_bs = 0;
+  int flag_fns = 0;
+  int flag_cfs = 0;
+  int flag_mdfn = 0;
+
+  /* initialize with default values */
+  *bs = DEFAULT_BLOCK_SIZE;
+  *fns = DEFAULT_FNS;
+  *cfs = DEFAULT_CFS;
+  *mdfn = DEFAULT_MDFN;
+
+  /* get the parameters */
+  int index = 1;
+  int exists = 0;
+  while ((exists = get_nth_string(str, buffer, index)) && is_parameter(str))
+  {
+    char number_as_string[MAX_DIGITS] = {0};
+    get_nth_string(number_as_string, buffer, index + 1);
+
+    if (!strcmp(str, "-bs"))
+    {
+      if (flag_bs == 1)
+      {
+        printf("Error: same string %s, given twice.\n", str);
+        return 0;
+      }
+
+      flag_bs = 1;
+      size_t block_size = atoi(number_as_string);
+      *bs = block_size;
+    }
+    else if (!strcmp(str, "-fns"))
+    {
+      if (flag_fns == 1)
+      {
+        printf("Error: same string %s, given twice.\n", str);
+        return 0;
+      }
+
+      flag_fns = 1;
+      size_t filename_size = atoi(number_as_string);
+      *fns = filename_size;
+    }
+    else if (!strcmp(str, "-cfs"))
+    {
+      if (flag_cfs == 1)
+      {
+        printf("Error: same string %s, given twice.\n", str);
+        return 0;
+      }
+
+      flag_cfs = 1;
+      size_t max_file_size = atoi(number_as_string);
+      *cfs = max_file_size;
+    }
+    else if (!strcmp(str, "-mdfn"))
+    {
+      if (flag_mdfn == 1)
+      {
+        printf("Error: same string %s, given twice.\n", str);
+        return 0;
+      }
+
+      flag_mdfn = 1;
+      uint max_dir_file_number = atoi(number_as_string);
+      *mdfn = max_dir_file_number;
+    }
+    else
+    {
+      printf("Wrong parameter given. Available parameters are: -bs, -fns, -cfs, mfdn,\n");
+      return 0;
+    }
+
+    index += 2;
+  }
+
+  if (!exists)
+  {
+    return 0;
+  }
+
+  /* get the filename */
+  MALLOC_OR_DIE_3(*cfs_filename, MAX_CFS_FILENAME_SIZE);
+  strcpy(*cfs_filename, str);
+
+  return 1;
+}
+
 
 
 

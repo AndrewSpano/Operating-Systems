@@ -10,6 +10,14 @@
 /* useful functions */
 int get_nth_string(char* str, const char buf[], int n);
 int get_option(const char buffer[]);
+int char_exists_in_string(const char* str, char x);
+int is_parameter(const char* str);
+
+/* get the parameters of functions */
+int get_cfs_touch_parameters(const char buffer[], int* flag_a, int* flag_m);
+int get_cfs_ls_parameters(const char buffer[], int* flag_a, int* flag_r, int* flag_l, int* flag_u, int* flag_d, int* flag_h);
+int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_R);
+int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size_t* cfs, size_t* mdfn, char** cfs_filename);
 
 /* navigation functions */
 off_t* pointer_to_offset(char* pointer, size_t fns);
