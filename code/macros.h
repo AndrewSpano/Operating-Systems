@@ -129,3 +129,13 @@
             return 0;                                  \
           }                                            \
         })
+
+
+
+#define FREE_IF_NOT_NULL(pointer)                      \
+        ({                                             \
+          if (pointer != NULL)                         \
+          {                                            \
+            free(pointer);                             \
+          }                                            \
+        })

@@ -183,6 +183,23 @@ int is_parameter(const char* str)
 }
 
 
+/* returns 1 if the given string is a positive integer; else returns 0 */
+int is_positive_integer(const char* str)
+{
+  int len = strlen(str);
+  int i = 0;
+  for (; i < len; i++)
+  {
+    if (str[i] < '0' || str[i] > '9')
+    {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+
 
 
 /* --------------------------------       GET FUNCTION PARAMETERS           ----------------------------------- */
@@ -276,7 +293,7 @@ int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_R)
 }
 
 /* pretty much self_explanatory */
-int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size_t* cfs, size_t* mdfn, char** cfs_filename)
+int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size_t* cfs, uint* mdfn, char** cfs_filename)
 {
   char str[MAX_BUFFER_SIZE] = {0};
 
@@ -293,12 +310,17 @@ int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size
   *mdfn = DEFAULT_MDFN;
 
   /* get the parameters */
-  int index = 1;
+  int index = 2;
   int exists = 0;
   while ((exists = get_nth_string(str, buffer, index)) && is_parameter(str))
   {
     char number_as_string[MAX_DIGITS] = {0};
     get_nth_string(number_as_string, buffer, index + 1);
+    if (!is_positive_integer(number_as_string))
+    {
+      printf("Wrong value for the %s parameter. Give a positive integer. Value given is: %s.\n", str, number_as_string);
+      return 0;
+    }
 
     if (!strcmp(str, "-bs"))
     {
@@ -357,17 +379,29 @@ int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size
     index += 2;
   }
 
+
   if (!exists)
   {
+    printf("No name was given for the cfs file\n");
     return 0;
   }
 
+  if (get_nth_string(str, buffer, index + 1))
+  {
+    printf("Wrong input: Only 1 cfs file can be created at a time.\n");
+    return 0;
+  }
+
+
   /* get the filename */
   MALLOC_OR_DIE_3(*cfs_filename, MAX_CFS_FILENAME_SIZE);
+  get_nth_string(str, buffer, index);
   strcpy(*cfs_filename, str);
 
   return 1;
 }
+
+
 
 
 
