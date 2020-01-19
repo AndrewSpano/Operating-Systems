@@ -67,25 +67,33 @@ off_t find_hole(char* cfs_filename, int fd, size_t my_size)
 
 int cfs_mkdir(char * name, uint bs, uint fns, uint cfs, uint mdfn, int fd)
 {
-  //find a hole for mds 
-  // size_t offset_for_mds = find_hole(name, fd, sizeof(MDS));
-  
-  // /* create the struct */
-  // MDS* mds = get_MDS(int fd, size_t offset_for_mds); //allocate new mds
-  // MDS* root_header = NULL;
-  // MALLOC_OR_DIE(root_header, root_header_size, fd);
+  //find holes for mds and data block 
+  // off_t offset_for_mds = find_hole(name, fd, sizeof(MDS));
+  // off_t offset_for_db = find_hole(name, fd, bs);
 
-  //  initialize its values 
-  // //edw xreiazomai parent offset 
-  // //kai offset tou first block of data
-  // /* size_t offset_for_data = find_hole(name, fd, sizeof(BLOCK))*/ 
-  // initialize_MDS(mds, 3, DIRECTORY, 1, 1, sizeof(MDS) + bs, superblock_size + hole_map_size, superblock_size + hole_map_size + sizeof(MDS));
-
+  // //initialize data block
+  // Block* db = NULL;
+  // MALLOC_OR_DIE(root_data, block_size, fd);
+  // /* initialize its values */
+  // void initialize_Directory_Data_Block(Block* block, size_t fns, off_t self_offset, off_t parent_offset);
+  // initialize_Directory_Data_Block(db, fns, /*self_offset*/, /*parent_offset*/);
   // /* write to the cfs file */
-  // WRITE_OR_DIE(fd, mds, sizeof(MDS));
+  // WRITE_OR_DIE(fd, root_data, block_size);
 
-  //evresi thesis sto hole table
+  // //initialize mds
+  // /* create the struct */
+  // MDS* mds = NULL;
+  // MALLOC_OR_DIE(mds, sizeof(MDS), fd);
+  // /* initialize its values */
+  // void initialize_MDS(MDS* mds, uint id, uint type, uint number_of_hard_links, uint blocks_using, size_t size, off_t parent_offset, off_t first_block);
+  // initialize_MDS(mds, /*3*/, DIRECTORY, 1, 1, mds_size + bs, /*parent offset from list*/, offset_for_db);
+  // /* write to the cfs file */
+  // WRITE_OR_DIE(fd, mds, mds_size);
 
+
+
+
+  //enimerosi parent directory
 
   //enimerosi superblock
   return 0;
