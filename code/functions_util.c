@@ -106,6 +106,14 @@ int directory_data_block_Is_Full(Block* block, size_t block_size, size_t fns)
 }
 
 
+/* returns non-zero value if the directory data block is empty;
+   else, if its not empty, it returns 0 */
+int directory_data_block_Is_Empty(Block* block)
+{
+  return block->bytes_used == 0;
+}
+
+
 /* returns the offset that corresponds to the target_name name given upon success;
    on failure, returns 0 */
 off_t get_offset(Block* block, char* target_name, size_t fns)

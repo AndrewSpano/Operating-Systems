@@ -257,7 +257,7 @@ void initialize_Directory_Data_Block(Block* block, size_t fns, off_t self_offset
   *offset = parent_offset;
 
   /* we have currently stored 2 directories (./ and ../, and their offsets) */
-  block->bytes_used = 2 * fns + 2 * sizeof(size_t);
+  block->bytes_used = 2 * fns + 2 * sizeof(off_t);
 }
 
 
@@ -440,7 +440,7 @@ void print_Directory_Data_Block(Block* block, size_t fns)
 {
   printf("\n\nBLOCK\n\n");
 
-  size_t size_of_pair = fns + sizeof(size_t);
+  size_t size_of_pair = fns + sizeof(off_t);
   uint pairs = block->bytes_used / size_of_pair;
 
 
