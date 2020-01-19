@@ -17,7 +17,7 @@ void insert_pair(Block* block, char* insert_name, off_t insert_offset, size_t fn
   off_t* offset = pointer_to_offset(name, fns);
   *offset = insert_offset;
 
-  size_t pair_size = fns + sizeof(size_t);
+  size_t pair_size = fns + sizeof(off_t);
   block->bytes_used += pair_size;
 }
 
@@ -51,7 +51,7 @@ int remove_pair(Block* block, char* remove_name, size_t fns)
     return -1;
   }
 
-  size_t size_of_pair = fns + sizeof(size_t);
+  size_t size_of_pair = fns + sizeof(off_t);
   uint pairs = block->bytes_used / size_of_pair;
 
   char* name = (char *) block->data;
@@ -90,16 +90,43 @@ int remove_pair(Block* block, char* remove_name, size_t fns)
 /* returns 1 if the directory data block is full; else returns 0 */
 int directory_data_block_Is_Full(Block* block, size_t block_size, size_t fns)
 {
-  size_t size_of_struct_variables = 2 * sizeof(size_t);
+  size_t size_of_struct_variables = sizeof(Block);
   size_t size_for_pairs = block_size - size_of_struct_variables;
 
   size_t size_remaining_for_pairs = size_for_pairs - block->bytes_used;
-  size_t size_of_pair = fns + sizeof(size_t);
+  size_t size_of_pair = fns + sizeof(off_t);
 
   /* if at least one pair can't fit, then the block is full */
   if (size_remaining_for_pairs < size_of_pair)
   {
     return 1;
+  }
+
+  return 0;
+}
+
+
+/* returns the offset that corresponds to the target_name name given upon success;
+   on failure, returns 0 */
+off_t get_offset(Block* block, char* target_name, size_t fns)
+{
+  size_t size_of_pair = fns + sizeof(off_t);
+  uint pairs = block->bytes_used / size_of_pair;
+
+  char* name = (char *) block->data;
+
+  int i = 0;
+  for (; i < pairs; i++)
+  {
+    if (!strcmp(name, target_name))
+    {
+      off_t* address_of_offset = pointer_to_offset(name, fns);
+      off_t value = *address_of_offset;
+
+      return value;
+    }
+
+    name = pointer_to_next_name(name , fns);
   }
 
   return 0;
