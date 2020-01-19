@@ -18,7 +18,8 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
      space that is needed to store the information for these 2 directories */
   if (bs < 2 * (fns + sizeof(off_t)))
   {
-    printf("block size if too small: %lu, or filename_size is too big: %lu\n A directory data block can't contain the basic information for the ./ and ../ directories.\n", bs, fns);
+    printf("block size if too small: %lu, or filename_size is too big: %lu\n \
+            A directory data block can't contain the basic information for the ./ and ../ directories.\n", bs, fns);
     return -1;
   }
 
@@ -130,12 +131,7 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
   free(my_superblock);
   free(holes);
 
-  int ret = close(fd);
-  if (ret == -1)
-  {
-    perror("close() error in cfs_create()");
-    return -1;
-  }
+  CLOSE_OR_DIE(fd);
 
   return 1;
 }
@@ -205,7 +201,6 @@ int cfs_workwith(char* cfs_filename, Stack_List** list)
 
   return fd;
 }
-
 
 
 
