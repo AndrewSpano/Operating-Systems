@@ -15,7 +15,7 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
 
   /* cfs directories have to able to at least contain the ./ and ../
      directories, therefore the data block size has to at least as big as the
-     space that is needed to store the information for these 2 directories */
+     space that is needed to store the information for these 2 directories error oc*/
   if (bs < 2 * (fns + sizeof(off_t)))
   {
     printf("block size if too small: %lu, or filename_size is too big: %lu\n \
@@ -31,7 +31,7 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
     /* ERROR: the file already existed */
     if (errno == EEXIST)
     {
-      perror("File already exists, give another name the for the cfs file.\n");
+      perror("File already exists, give another name for the cfs file.\n");
     }
     /* some other error occured */
     else
@@ -102,7 +102,7 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
   MALLOC_OR_DIE(root_header, root_header_size, fd);
 
   /* initialize its values */
-  initialize_MDS(root_header, 2, DIRECTORY, 1, 1, root_header_size + bs, superblock_size + hole_map_size, superblock_size + hole_map_size + root_header_size);
+  initialize_MDS(root_header, 2, DIRECTORY, 1, 1, root_header_size + 2 * (fns + sizeof(off_t)), superblock_size + hole_map_size, superblock_size + hole_map_size + root_header_size);
 
   /* write to the cfs file */
   WRITE_OR_DIE(fd, root_header, root_header_size);

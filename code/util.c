@@ -143,6 +143,10 @@ int get_option(const char buffer[])
   {
     return 14;
   }
+  else if (!strcmp(option, "cfs_exit"))
+  {
+    return 15;
+  }
   else
   {
     /* else no valid option has been found */
@@ -349,7 +353,7 @@ int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_R)
 }
 
 /* pretty much self_explanatory */
-int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size_t* cfs, uint* mdfn, char** cfs_filename)
+int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size_t* cfs, uint* mdfn, char* cfs_filename)
 {
   char str[MAX_BUFFER_SIZE] = {0};
 
@@ -435,7 +439,6 @@ int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size
     index += 2;
   }
 
-
   if (!exists)
   {
     printf("No name was given for the cfs file\n");
@@ -450,9 +453,7 @@ int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size
 
 
   /* get the filename */
-  MALLOC_OR_DIE_3(*cfs_filename, MAX_CFS_FILENAME_SIZE);
-  get_nth_string(str, buffer, index);
-  strcpy(*cfs_filename, str);
+  get_nth_string(cfs_filename, buffer, index);
 
   return 1;
 }
@@ -498,7 +499,7 @@ char* pointer_to_next_name(char* pointer, size_t fns)
 
 void initialize_superblock(superblock* my_superblock, char* cfs_filename, int fd, off_t root_directory_offset, size_t current_size, size_t bs, size_t fns, size_t cfs, uint mdfn)
 {
-  my_superblock->total_entities = 3;
+  my_superblock->total_entities = 1;
   my_superblock->fd = fd;
   my_superblock->root_directory = root_directory_offset;
   my_superblock->current_size = current_size;
