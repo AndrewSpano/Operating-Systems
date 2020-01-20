@@ -164,7 +164,7 @@ int shift_holes_to_the_left(hole_map* holes, uint hole_position)
 
   memset(&(holes->holes_table[hole_position + 1]), 0, size_of_remaining_holes);
 
-  memcpy(&(holes->holes_table[hole_position ]), temp_holes, size_of_remaining_holes);
+  memcpy(&(holes->holes_table[hole_position]), temp_holes, size_of_remaining_holes);
 
   free(temp_holes);
 
