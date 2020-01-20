@@ -8,43 +8,49 @@
 #include "structs.h"
 #include "functions2.h"
 #include "util.h"
+#include "functions_util.h"
 
 
-//pairnei to megethos tou struct pou theloume na apothikefsoume sto cfs_file
-//kai epistrefei to offset pou xwraei(tripa i telos)
+/* implements first fit algorithm */
 off_t find_hole(hole_map* holes, size_t my_size)
 {
+  /* the position that will be returned */
   off_t offset_to_return = 0;
 
   int i = 0;
   for (; i < MAX_HOLES; i++)
   {
+    /* if we reach the last hole (which is the biggest), use it */
     if (holes->holes_table[i].end == 0)
     {
-      // printf("start = %lu, end = %lu\n", holes->holes_table[i].start, holes->holes_table[i].end);
-      //end of current files
-      printf("wanted offset %lu\n", holes->holes_table[i].start);
       offset_to_return = holes->holes_table[i].start;
+      /* make the hole smaller because it will host a new entity */
       holes->holes_table[i].start += my_size;
 
       return offset_to_return;
     }
-    // printf("start = %lu, end = %lu\n", holes->holes_table[i].start, holes->holes_table[i].end);
-    off_t available_size = holes->holes_table[i].end - holes->holes_table[i].start;
-    printf("available_size = %lu\n", available_size);
 
-    if (available_size == my_size) //fits exactly
+    size_t available_size = holes->holes_table[i].end - holes->holes_table[i].start;
+
+    /* if it fits exactly */
+    if (available_size == my_size)
     {
       offset_to_return = holes->holes_table[i].start;
+      /* the entity fits exactly, so the hole will disappear, and therefore
+         we must shift the previous holes one position to the left to fill it */
       shift_holes_to_the_left(holes, i);
-      holes->current_hole_number--; //after shifting
+      /* the hole disappeared, so decrement the counter by 1 */
+      holes->current_hole_number--;
 
       return offset_to_return;
     }
-    else if (available_size > my_size) //leaves a hole
+    /* else, if the entity has a smaller size than the hole, then the hole will
+       keep existing, but become smaller */
+    else if (available_size > my_size)
     {
       offset_to_return = holes->holes_table[i].start;
-      holes->holes_table[i].start += my_size; // shrink hole
+      /* shrink the whole by the size of the entity to be inserted */
+      holes->holes_table[i].start += my_size;
 
       return offset_to_return;
     }
@@ -53,6 +59,8 @@ off_t find_hole(hole_map* holes, size_t my_size)
 
   return 0;
 }
+
+
 
 
 
