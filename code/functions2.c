@@ -11,131 +11,49 @@
 #include "functions_util.h"
 
 
-/* implements first fit algorithm */
-off_t find_hole(hole_map* holes, size_t my_size)
-{
-  /* the position that will be returned */
-  off_t offset_to_return = 0;
+int get_nth_pair(MDS* mds, char** name, off_t* offset, int fd, int n)
+{ 
+  superblock* my_superblock = get_superblock(fd);
+  Block* my_block = get_Block(fd, my_superblock->block_size, mds->first_block);
 
-  int i = 0;
-  for (; i < MAX_HOLES; i++)
+  size_t size_of_struct_variables = sizeof(Block);
+  size_t size_for_pairs = my_superblock->block_size - size_of_struct_variables;
+  size_t size_of_pair = my_superblock->filename_size + sizeof(off_t);
+  size_t pairs_in_block = my_block->bytes_used / size_of_pair;
+  
+  if (pairs_in_block < n)
   {
-    /* if we reach the last hole (which is the biggest), use it */
-    if (holes->holes_table[i].end == 0)
-    {
-      offset_to_return = holes->holes_table[i].start;
-      /* make the hole smaller because it will host a new entity */
-      holes->holes_table[i].start += my_size;
-
-      return offset_to_return;
-    }
-
-    size_t available_size = holes->holes_table[i].end - holes->holes_table[i].start;
-
-    /* if it fits exactly */
-    if (available_size == my_size)
-    {
-      offset_to_return = holes->holes_table[i].start;
-      /* the entity fits exactly, so the hole will disappear, and therefore
-         we must shift the previous holes one position to the left to fill it */
-      shift_holes_to_the_left(holes, i);
-      /* the hole disappeared, so decrement the counter by 1 */
-      holes->current_hole_number--;
-
-      return offset_to_return;
-    }
-    /* else, if the entity has a smaller size than the hole, then the hole will
-       keep existing, but become smaller */
-    else if (available_size > my_size)
-    {
-      offset_to_return = holes->holes_table[i].start;
-      /* shrink the whole by the size of the entity to be inserted */
-      holes->holes_table[i].start += my_size;
-
-      return offset_to_return;
-    }
+    printf("error: wrong n\n");
+    return 0;
   }
 
-
-  return 0;
-}
-
-
-
-
-
-int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list, char* name)
-{
-  //need to check if #_of_entities< mdfn
-
-
-  // find holes for mds and data block
-  off_t offset_for_mds = find_hole(holes, sizeof(MDS));
-  off_t offset_for_data_block = find_hole(holes, my_superblock->block_size);
-
-  //initialize data block
-  Block* data_block = NULL;
-  MALLOC_OR_DIE(data_block, my_superblock->block_size, fd);
-  /* initialize its values */
-
-  //get current directory offset
-  char * parent_name = malloc(sizeof(char) * my_superblock->filename_size);
-  off_t parent_offset;
-  Stack_List_Peek(list, &parent_name, &parent_offset);
-
-
-  // void initialize_Directory_Data_Block(Block* block, size_t fns, off_t self_offset, off_t parent_offset);
-  initialize_Directory_Data_Block(data_block, fns, offset_for_data_block, parent_offset);
-  // write to the cfs file
-  set_Block(data_block, fd, my_superblock->block_size, offset_for_data_block);
-
-  //initialize mds
-  //get superblock for id
-
-  /* create the struct */
-  MDS* mds = NULL;
-  MALLOC_OR_DIE(mds, sizeof(MDS), fd);
-  /* initialize its values */
-  // void initialize_MDS(MDS* mds, uint id, uint type, uint number_of_hard_links, uint blocks_using, size_t size, off_t parent_offset, off_t first_block);
-  initialize_MDS(mds, my_superblock->total_entities + 1, DIRECTORY, 1, 1, sizeof(MDS) + my_superblock->block_size, parent_offset, offset_for_data_block);
-  /* write to the cfs file */
-  set_MDS(mds, fd, offset_for_mds);
-
-
-  //enimerosi parent directory
-  off_t current_offset = parent_offset;
-  MDS* mds_cur = get_MDS(fd, parent_offset);
-  Block* last_block = get_Block(fd, my_superblock->block_size, mds_cur->first_block);
-  while (last_block->next_block != 0)
+  
+  size_t max_pairs = size_for_pairs / size_of_pair;
+  
+  while(n > max_pairs)
   {
-    last_block = get_Block(fd, my_superblock->block_size, last_block->next_block);
-  }
+    Block* temp_block = my_block;
+    my_block = get_Block(fd, my_superblock->block_size, my_block->next_block);
+    free(temp_block);
+    n = n - max_pairs; 
+  } 
 
-  if(directory_data_block_Is_Full(last_block, my_superblock->block_size, fns) == 0) //there is space in the block
+  char* ret_name = (char *) my_block->data;
+  printf("first name: %s\n", ret_name);
+  off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+  printf("offset for name: %lu\n", *ret_offset);
+  
+  int j = 1;
+  for (; j < n ; j++)
   {
-    insert_pair(last_block, name, offset_for_mds, my_superblock->filename_size);
-  }
-  else //block is full
-  { //allocate new block
-    off_t new_block_hole = find_hole(holes, my_superblock->block_size);
-
-    Block* new_block = NULL;
-    new_block = malloc(my_superblock->block_size);
-
-    new_block->next_block = 0;
-    new_block->bytes_used = fns + sizeof(off_t);
-
-    last_block->next_block = new_block_hole;
-
-    insert_pair(block, name, new_block_hole, my_superblock->filename_size);
+    ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size);
+    ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
   }
 
-
-
-
-  //enimerosi superblock
-  my_superblock->total_entities += 1;
-  my_superblock->current_size += sizeof(MDS) + my_superblock->block_size; //parent's block had space for the new entry
-
+  free(my_block);
+  free(my_superblock);
+  strcpy(*name,ret_name); 
+  *offset = *ret_offset;
+  /*failure*/
   return 0;
 }

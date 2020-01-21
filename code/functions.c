@@ -6,6 +6,7 @@
 #include <errno.h>
 
 #include "functions.h"
+#include "functions_util.h"
 #include "util.h"
 
 
@@ -31,7 +32,7 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
     /* ERROR: the file already existed */
     if (errno == EEXIST)
     {
-      perror("File already exists, give another name for the cfs file.\n");
+      printf("File already exists, give another name for the cfs file.\n");
     }
     /* some other error occured */
     else
@@ -102,7 +103,7 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
   MALLOC_OR_DIE(root_header, root_header_size, fd);
 
   /* initialize its values */
-  initialize_MDS(root_header, 2, DIRECTORY, 1, 1, root_header_size + 2 * (fns + sizeof(off_t)), superblock_size + hole_map_size, superblock_size + hole_map_size + root_header_size);
+  initialize_MDS(root_header, 2, DIRECTORY, 1, 1, 2 * (fns + sizeof(off_t)), superblock_size + hole_map_size, superblock_size + hole_map_size + root_header_size);
 
   /* write to the cfs file */
   WRITE_OR_DIE(fd, root_header, root_header_size);
@@ -237,6 +238,108 @@ int cfs_workwith(char* cfs_filename, superblock** my_superblock, hole_map** hole
 
 
   return fd;
+}
+
+
+
+int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list, MDS* current_directory, off_t parent_offset, char* insert_name)
+{
+  size_t block_size = my_superblock->block_size;
+  size_t fns = my_superblock->filename_size;
+  uint total_entities = my_superblock->total_entities;
+
+  size_t size_of_mds = sizeof(MDS);
+  off_t mds_position = find_hole(holes, size_of_mds);
+  off_t block_position = find_hole(holes, block_size);
+
+  if (mds_position == 0 || block_position == 0)
+  {
+    printf("No more holes are available. Make the hole map bigger in the next cfs file you make\n");
+    return 0;
+  }
+
+
+
+
+  /* create the struct */
+  MDS* new_mds = NULL;
+  MALLOC_OR_DIE_3(new_mds, sizeof(MDS));
+  /* initialize its values */
+  initialize_MDS(new_mds, total_entities - 1, DIRECTORY, 1, 1, 2 * (fns + sizeof(off_t)), parent_offset, block_position);
+
+  /* write to the cfs file */
+  int retval = set_MDS(new_mds, fd, mds_position);
+  if (retval == 0)
+  {
+    perror("Error occured in set_MDS() when called from cfs_mkdir()");
+    free(new_mds);
+
+    return 0;
+  }
+
+  free(new_mds);
+
+
+  /* initialize data block */
+  Block* data_block = NULL;
+  MALLOC_OR_DIE_3(data_block, block_size);
+  /* initialize the new directory data block */
+  initialize_Directory_Data_Block(data_block, fns, block_position, parent_offset);
+
+  /* write the block in the cfs file */
+  retval = set_Block(data_block, fd, block_size, block_position);
+  if (retval == 0)
+  {
+    perror("Error occured in set_Block() when called from cfs_mkdir()");
+    free(data_block);
+
+    return 0;
+  }
+
+  free(data_block);
+
+  /* insert the pair */
+  retval = insert_pair(fd, holes, current_directory, insert_name, mds_position, block_size, fns);
+  if (retval == 0)
+  {
+    printf("insert_pair() error when called from cfs_mkdir()\n");
+    return 0;
+  }
+
+
+  /* calculate the attributes that will be added to the current directory */
+  size_t size_of_pair = fns + sizeof(off_t);
+  current_directory->size += size_of_pair;
+  if (retval == 1)
+  {
+    current_directory->blocks_using++;
+  }
+
+  /* update the current_directory */
+  retval = set_MDS(current_directory, fd, parent_offset);
+  if (retval == 0)
+  {
+    perror("Error occured in set_MDS() when called from cfs_mkdir() before finishing the function");
+
+    return 0;
+  }
+
+
+  /* update the superblock */
+  my_superblock->total_entities += 1;
+  /* the pair that was added to the current directory, plus the 2 pairs (./ and
+     ../) that were added to the new directory */
+  my_superblock->current_size += size_of_pair + 2 * size_of_pair;
+
+  retval = set_superblock(my_superblock, fd);
+  if (retval == 0)
+  {
+    perror("Error occured in set_superblock() when called from cfs_mkdir() before finishing the function");
+
+    return 0;
+  }
+
+  return 1;
 }
 
 

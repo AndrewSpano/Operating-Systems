@@ -5,7 +5,8 @@
 #include "macros.h"
 #include "list.h"
 
-off_t find_hole(hole_map* holes, size_t my_size);
-int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list, char* name);
+
+int get_nth_pair(MDS* mds, char** name, off_t* offset, int fd, int n);
+
 
 #endif

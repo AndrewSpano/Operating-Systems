@@ -8,7 +8,7 @@
 
 
 /* inserts a pair: <name, offset> to the data block of a directory */
-void insert_pair(Block* block, char* insert_name, off_t insert_offset, size_t fns)
+void insert_pair_into_block(Block* block, char* insert_name, off_t insert_offset, size_t fns)
 {
   char* name = (char *) block->data;
   name += block->bytes_used;
@@ -20,6 +20,94 @@ void insert_pair(Block* block, char* insert_name, off_t insert_offset, size_t fn
 
   size_t pair_size = fns + sizeof(off_t);
   block->bytes_used += pair_size;
+}
+
+
+/* inserts a pair: <name, offset> to a directory */
+int insert_pair(int fd, hole_map* holes, MDS* mds, char* insert_name, off_t insert_offset, size_t block_size, size_t fns)
+{
+  off_t block_position = mds->first_block;
+  Block* block = get_Block(fd, block_size, block_position);
+  DIE_IF_NULL(block);
+
+  int new_block_needed = 0;
+
+  while (directory_data_block_Is_Full(block, block_size, fns))
+  {
+    if (block->next_block == 0)
+    {
+      new_block_needed = 1;
+      break;
+    }
+
+    block_position = block->next_block;
+    free(block);
+    block = get_Block(fd, block_size, block_position);
+    DIE_IF_NULL(block);
+  }
+
+  if (!new_block_needed)
+  {
+    insert_pair_into_block(block, insert_name, insert_offset, fns);
+    int retval = set_Block(block, fd, block_size, block_position);
+    if (retval == 0)
+    {
+      printf("Error in set_Block() when called from insert_pair().\n");
+      free(block);
+
+      return 0;
+    }
+
+    free(block);
+  }
+  else
+  {
+    off_t new_block_position = find_hole(holes, block_size);
+    if (new_block_position == 0)
+    {
+      printf("No hole was found that could fit a new block. Make the hole map bigger.\n");
+      return 0;
+    }
+
+    block->next_block = new_block_position;
+    int retval = set_Block(block, fd, block_size, block_position);
+    if (retval == 0)
+    {
+      printf("Error in set_Block() when called from insert_pair().\n");
+      free(block);
+
+      return 0;
+    }
+
+    free(block);
+
+    Block* new_block = NULL;
+    MALLOC_OR_DIE_3(new_block, block_size);
+
+    new_block->next_block = 0;
+    new_block->bytes_used = 0;
+    insert_pair_into_block(block, insert_name, insert_offset, fns);
+
+    retval = set_Block(new_block, fd, block_size, new_block_position);
+    if (retval == 0)
+    {
+      printf("Error in set_Block() when called from insert_pair().\n");
+      free(new_block);
+
+      return 0;
+    }
+
+    free(new_block);
+  }
+
+  if (new_block_needed)
+  {
+    return 1;
+  }
+  else
+  {
+    return -1;
+  }
 }
 
 
@@ -150,6 +238,55 @@ off_t get_offset(Block* block, char* target_name, size_t fns)
 
 
 
+/* implements first fit algorithm */
+off_t find_hole(hole_map* holes, size_t my_size)
+{
+  /* the position that will be returned */
+  off_t offset_to_return = 0;
+
+  int i = 0;
+  for (; i < MAX_HOLES; i++)
+  {
+    /* if we reach the last hole (which is the biggest), use it */
+    if (holes->holes_table[i].end == 0)
+    {
+      offset_to_return = holes->holes_table[i].start;
+      /* make the hole smaller because it will host a new entity */
+      holes->holes_table[i].start += my_size;
+
+      return offset_to_return;
+    }
+
+    size_t available_size = holes->holes_table[i].end - holes->holes_table[i].start;
+
+    /* if it fits exactly */
+    if (available_size == my_size)
+    {
+      offset_to_return = holes->holes_table[i].start;
+      /* the entity fits exactly, so the hole will disappear, and therefore
+         we must shift the previous holes one position to the left to fill it */
+      shift_holes_to_the_left(holes, i);
+      /* the hole disappeared, so decrement the counter by 1 */
+      holes->current_hole_number--;
+
+      return offset_to_return;
+    }
+    /* else, if the entity has a smaller size than the hole, then the hole will
+       keep existing, but become smaller */
+    else if (available_size > my_size)
+    {
+      offset_to_return = holes->holes_table[i].start;
+      /* shrink the whole by the size of the entity to be inserted */
+      holes->holes_table[i].start += my_size;
+
+      return offset_to_return;
+    }
+  }
+
+  /* if no hole is found, return 0 */
+  return 0;
+}
+
 
 /* function that shifts the holes of the hole table 1 position to the left */
 int shift_holes_to_the_left(hole_map* holes, uint hole_position)
@@ -190,4 +327,13 @@ int shift_holes_to_the_right(hole_map* holes, uint hole_position)
   free(temp_holes);
 
   return 1;
+}
+
+
+/* returns the number of sub-entites that the directory has */
+uint number_of_sub_entities_in_directory(size_t directory_data_size, size_t fns)
+{
+  size_t size_of_pair = fns + sizeof(off_t);
+  uint total_pairs = directory_data_size / size_of_pair;
+  return total_pairs;
 }

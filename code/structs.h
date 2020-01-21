@@ -35,7 +35,7 @@ typedef struct hole
 
 typedef struct hole_map
 {
-  uint current_hole_number;
+  long unsigned int current_hole_number;
   hole holes_table[MAX_HOLES];
 } hole_map;
 

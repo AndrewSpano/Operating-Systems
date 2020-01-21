@@ -10,6 +10,29 @@
         })
 
 
+/* used free allocated space and exit the program */
+#define FREE_AND_CLOSE(my_superblock, holes, list, fd)           \
+        ({                                                       \
+          free_mem(&my_superblock, &holes, &list);               \
+          int ret = close(fd);                                   \
+          if (ret == -1)                                         \
+          {                                                      \
+            perror("close() error in main() when exiting.");     \
+          }                                                      \
+        })
+
+
+
+/*fast break if no cfs file is open */
+#define BREAK_IF_NO_FILE_OPEN(fd)                                                              \
+        ({                                                                                     \
+          if (fd == -1)                                                                        \
+          {                                                                                    \
+            printf("Not currently working with any cfs file to perform the operation.\n");     \
+            break;                                                                             \
+          }                                                                                    \
+        })
+
 
 
 /* malloc() macro used to avoid hard code checks */

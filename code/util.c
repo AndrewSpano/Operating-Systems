@@ -59,7 +59,7 @@ int get_nth_string(char* str, const char buf[], int n)
     i++;
     k++;
 
-    if (i == 256)
+    if (i == MAX_BUFFER_SIZE)
     {
       memset(str, 0, k);
       return 0;
@@ -605,6 +605,12 @@ hole_map* get_hole_map(int fd)
 
 MDS* get_MDS(int fd, off_t offset)
 {
+  if (offset == 0)
+  {
+    printf("Wrong offset give in get_MDS().\n");
+    return NULL;
+  }
+
   MDS* mds = NULL;
 
   MALLOC_OR_DIE_2(mds, sizeof(MDS));
@@ -619,6 +625,12 @@ MDS* get_MDS(int fd, off_t offset)
 
 Block* get_Block(int fd, size_t block_size, off_t offset)
 {
+  if (offset == 0)
+  {
+    printf("Wrong offset give in get_Block().\n");
+    return NULL;
+  }
+
   Block* block = NULL;
 
   MALLOC_OR_DIE_2(block, block_size);
@@ -655,7 +667,9 @@ int set_hole_map(hole_map* holes, int fd)
 
   LSEEK_OR_DIE(fd, sizeof(superblock), SEEK_SET);
 
-  WRITE_OR_DIE_2(fd, holes, sizeof(holes));
+  /* update only the non-zero holes */
+  size_t size_taken = sizeof(long unsigned int) + holes->current_hole_number * sizeof(hole);
+  WRITE_OR_DIE_2(fd, holes, size_taken);
 
   return 1;
 }
@@ -710,7 +724,7 @@ void print_superblock(superblock* my_superblock)
 void print_hole_table(hole_map* holes)
 {
   printf("\n\nHOLE TABLE\n\n");
-  printf("current_hole_number = %u\n\n", holes->current_hole_number);
+  printf("current_hole_number = %lu\n\n", holes->current_hole_number);
 
   int i = 0;
   for (; i < MAX_HOLES; i++)
