@@ -184,15 +184,14 @@ int main(int argc, char* argv[])
           /* determine whether it can host a new sub-entity */
           if (!is_root && number_of_sub_entities_in_directory(current_directory_size, fns) == max_number_of_files)
           {
-            printf("Can't create the new directory '%s' because the current directory has already \
-                    reached max number of sub-entites.\n", new_directory_name);
+            printf("Can't create the new directory '%s' because the current directory has already reached max number of sub-entites.\n", new_directory_name);
 
             break;
           }
 
           /* if we reach here it means that we can create a new directory inside
              the current one */
-          retval = cfs_mkdir(fd, my_superblock, holes, list, current_directory, new_directory_name);
+          retval = cfs_mkdir(fd, my_superblock, holes, list, current_directory, current_directory_offset, new_directory_name);
           if (!retval)
           {
             printf("Unexpected error occured in cfs_mkdir(). Exiting..\n");
@@ -202,6 +201,8 @@ int main(int argc, char* argv[])
 
             return EXIT_FAILURE;
           }
+
+          index++;
         }
 
         free(current_directory);
@@ -288,14 +289,14 @@ int main(int argc, char* argv[])
         int retval = get_cfs_create_parameters(buffer, &bs, &fns, &cfs, &mdfn, new_cfs_filename);
         if (!retval)
         {
-          printf("Error while reading the parameters of cfs_create\n");
+          printf("Error while reading the parameters of cfs_create.\n");
           break;
         }
 
         retval = cfs_create(new_cfs_filename, bs, fns, cfs, mdfn);
         if (retval == -1)
         {
-          printf("Error in cfs_create()\n");
+          printf("Error in cfs_create().\n");
           break;
         }
 
@@ -304,7 +305,7 @@ int main(int argc, char* argv[])
 
       case 15:
       {
-        printf("Terminating the program..\n");
+        printf("\nTerminating the program..\n");
 
         break;
       }
@@ -324,12 +325,8 @@ int main(int argc, char* argv[])
   } while (option != 15);
 
 
-  printf("\n\n");
-
-  /* MAY CAUSE SEGMENTATION ERROR */
-  FREE_IF_NOT_NULL(my_superblock);
-  FREE_IF_NOT_NULL(holes);
-  Stack_List_Destroy(&list);
+  printf("\n");
+  free_mem(&my_superblock, &holes, &list);
 
   if (fd > 0)
   {

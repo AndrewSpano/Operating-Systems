@@ -24,14 +24,13 @@
 
 
 /*fast break if no cfs file is open */
-#define BREAK_IF_NO_FILE_OPEN(fd)                                  \
-        ({                                                         \
-          if (fd == -1)                                            \
-          {                                                        \
-            printf("Not currently working with any cfs file to     \
-                    perform operation.\n");                        \
-            break;                                                 \
-          }                                                        \
+#define BREAK_IF_NO_FILE_OPEN(fd)                                                              \
+        ({                                                                                     \
+          if (fd == -1)                                                                        \
+          {                                                                                    \
+            printf("Not currently working with any cfs file to perform the operation.\n");     \
+            break;                                                                             \
+          }                                                                                    \
         })
 
 

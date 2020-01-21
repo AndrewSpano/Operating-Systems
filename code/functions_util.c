@@ -8,7 +8,7 @@
 
 
 /* inserts a pair: <name, offset> to the data block of a directory */
-void insert_pair(Block* block, char* insert_name, off_t insert_offset, size_t fns)
+void insert_pair_into_block(Block* block, char* insert_name, off_t insert_offset, size_t fns)
 {
   char* name = (char *) block->data;
   name += block->bytes_used;
@@ -20,6 +20,94 @@ void insert_pair(Block* block, char* insert_name, off_t insert_offset, size_t fn
 
   size_t pair_size = fns + sizeof(off_t);
   block->bytes_used += pair_size;
+}
+
+
+/* inserts a pair: <name, offset> to a directory */
+int insert_pair(int fd, hole_map* holes, MDS* mds, char* insert_name, off_t insert_offset, size_t block_size, size_t fns)
+{
+  off_t block_position = mds->first_block;
+  Block* block = get_Block(fd, block_size, block_position);
+  DIE_IF_NULL(block);
+
+  int new_block_needed = 0;
+
+  while (directory_data_block_Is_Full(block, block_size, fns))
+  {
+    if (block->next_block == 0)
+    {
+      new_block_needed = 1;
+      break;
+    }
+
+    block_position = block->next_block;
+    free(block);
+    block = get_Block(fd, block_size, block_position);
+    DIE_IF_NULL(block);
+  }
+
+  if (!new_block_needed)
+  {
+    insert_pair_into_block(block, insert_name, insert_offset, fns);
+    int retval = set_Block(block, fd, block_size, block_position);
+    if (retval == 0)
+    {
+      printf("Error in set_Block() when called from insert_pair().\n");
+      free(block);
+
+      return 0;
+    }
+
+    free(block);
+  }
+  else
+  {
+    off_t new_block_position = find_hole(holes, block_size);
+    if (new_block_position == 0)
+    {
+      printf("No hole was found that could fit a new block. Make the hole map bigger.\n");
+      return 0;
+    }
+
+    block->next_block = new_block_position;
+    int retval = set_Block(block, fd, block_size, block_position);
+    if (retval == 0)
+    {
+      printf("Error in set_Block() when called from insert_pair().\n");
+      free(block);
+
+      return 0;
+    }
+
+    free(block);
+
+    Block* new_block = NULL;
+    MALLOC_OR_DIE_3(new_block, block_size);
+
+    new_block->next_block = 0;
+    new_block->bytes_used = 0;
+    insert_pair_into_block(block, insert_name, insert_offset, fns);
+
+    retval = set_Block(new_block, fd, block_size, new_block_position);
+    if (retval == 0)
+    {
+      printf("Error in set_Block() when called from insert_pair().\n");
+      free(new_block);
+
+      return 0;
+    }
+
+    free(new_block);
+  }
+
+  if (new_block_needed)
+  {
+    return 1;
+  }
+  else
+  {
+    return -1;
+  }
 }
 
 
