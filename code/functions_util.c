@@ -150,6 +150,55 @@ off_t get_offset(Block* block, char* target_name, size_t fns)
 
 
 
+/* implements first fit algorithm */
+off_t find_hole(hole_map* holes, size_t my_size)
+{
+  /* the position that will be returned */
+  off_t offset_to_return = 0;
+
+  int i = 0;
+  for (; i < MAX_HOLES; i++)
+  {
+    /* if we reach the last hole (which is the biggest), use it */
+    if (holes->holes_table[i].end == 0)
+    {
+      offset_to_return = holes->holes_table[i].start;
+      /* make the hole smaller because it will host a new entity */
+      holes->holes_table[i].start += my_size;
+
+      return offset_to_return;
+    }
+
+    size_t available_size = holes->holes_table[i].end - holes->holes_table[i].start;
+
+    /* if it fits exactly */
+    if (available_size == my_size)
+    {
+      offset_to_return = holes->holes_table[i].start;
+      /* the entity fits exactly, so the hole will disappear, and therefore
+         we must shift the previous holes one position to the left to fill it */
+      shift_holes_to_the_left(holes, i);
+      /* the hole disappeared, so decrement the counter by 1 */
+      holes->current_hole_number--;
+
+      return offset_to_return;
+    }
+    /* else, if the entity has a smaller size than the hole, then the hole will
+       keep existing, but become smaller */
+    else if (available_size > my_size)
+    {
+      offset_to_return = holes->holes_table[i].start;
+      /* shrink the whole by the size of the entity to be inserted */
+      holes->holes_table[i].start += my_size;
+
+      return offset_to_return;
+    }
+  }
+
+  /* if no hole is found, return 0 */
+  return 0;
+}
+
 
 /* function that shifts the holes of the hole table 1 position to the left */
 int shift_holes_to_the_left(hole_map* holes, uint hole_position)
@@ -190,4 +239,13 @@ int shift_holes_to_the_right(hole_map* holes, uint hole_position)
   free(temp_holes);
 
   return 1;
+}
+
+
+/* returns the number of sub-entites that the directory has */
+uint number_of_sub_entities_in_directory(size_t directory_data_size, size_t fns)
+{
+  size_t size_of_pair = fns + sizeof(off_t);
+  uint total_pairs = directory_data_size / size_of_pair;
+  return total_pairs;
 }

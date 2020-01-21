@@ -59,7 +59,7 @@ int get_nth_string(char* str, const char buf[], int n)
     i++;
     k++;
 
-    if (i == 256)
+    if (i == MAX_BUFFER_SIZE)
     {
       memset(str, 0, k);
       return 0;
@@ -655,7 +655,9 @@ int set_hole_map(hole_map* holes, int fd)
 
   LSEEK_OR_DIE(fd, sizeof(superblock), SEEK_SET);
 
-  WRITE_OR_DIE_2(fd, holes, sizeof(holes));
+  /* update only the non-zero holes */
+  size_t size_taken = sizeof(long unsigned int) + holes->current_hole_number * sizeof(hole);
+  WRITE_OR_DIE_2(fd, holes, size_taken);
 
   return 1;
 }

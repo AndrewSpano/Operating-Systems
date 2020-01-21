@@ -11,7 +11,10 @@ int directory_data_block_Is_Full(Block* block, size_t block_size, size_t fns);
 int directory_data_block_Is_Empty(Block* block);
 off_t get_offset(Block* block, char* target_name, size_t fns);
 
+off_t find_hole(hole_map* holes, size_t my_size);
 int shift_holes_to_the_left(hole_map* holes, uint hole_position);
 int shift_holes_to_the_right(hole_map* holes, uint hole_position);
+
+uint number_of_sub_entities_in_directory(size_t directory_data_size, size_t fns);
 
 #endif
