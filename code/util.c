@@ -441,7 +441,7 @@ int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size
 
   if (!exists)
   {
-    printf("No name was given for the cfs file\n");
+    printf("No name was given for the cfs file.\n");
     return 0;
   }
 

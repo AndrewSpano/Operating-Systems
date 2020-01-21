@@ -103,7 +103,7 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
   MALLOC_OR_DIE(root_header, root_header_size, fd);
 
   /* initialize its values */
-  initialize_MDS(root_header, 2, DIRECTORY, 1, 1, 2 * (fns + sizeof(off_t)), superblock_size + hole_map_size, superblock_size + hole_map_size + root_header_size);
+  initialize_MDS(root_header, 0, DIRECTORY, 1, 1, 2 * (fns + sizeof(off_t)), superblock_size + hole_map_size, superblock_size + hole_map_size + root_header_size);
 
   /* write to the cfs file */
   WRITE_OR_DIE(fd, root_header, root_header_size);
@@ -260,12 +260,11 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
 
 
 
-
   /* create the struct */
   MDS* new_mds = NULL;
   MALLOC_OR_DIE_3(new_mds, sizeof(MDS));
   /* initialize its values */
-  initialize_MDS(new_mds, total_entities - 1, DIRECTORY, 1, 1, 2 * (fns + sizeof(off_t)), parent_offset, block_position);
+  initialize_MDS(new_mds, total_entities, DIRECTORY, 1, 1, 2 * (fns + sizeof(off_t)), parent_offset, block_position);
 
   /* write to the cfs file */
   int retval = set_MDS(new_mds, fd, mds_position);
@@ -313,6 +312,7 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
   if (retval == 1)
   {
     current_directory->blocks_using++;
+    my_superblock->current_size += block_size;
   }
 
   /* update the current_directory */
@@ -327,9 +327,8 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
 
   /* update the superblock */
   my_superblock->total_entities += 1;
-  /* the pair that was added to the current directory, plus the 2 pairs (./ and
-     ../) that were added to the new directory */
-  my_superblock->current_size += size_of_pair + 2 * size_of_pair;
+  /* the size of the new directory plus its first block */
+  my_superblock->current_size += sizeof(MDS) + block_size;
 
   retval = set_superblock(my_superblock, fd);
   if (retval == 0)
