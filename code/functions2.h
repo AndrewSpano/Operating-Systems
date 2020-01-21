@@ -6,4 +6,7 @@
 #include "list.h"
 
 
+int get_nth_pair(MDS* mds, char** name, off_t* offset, int fd, int n);
+
+
 #endif
