@@ -55,7 +55,24 @@ int main(int argc, char* argv[])
 
   do {
 
-    printf("> ");
+    /* print the filename, if we are currently working with a file */
+    if (cfs_filename[0] != 0)
+    {
+      // [0;32m	Green
+      // [1;32m	Bold Green
+
+      /* set print colour to Bold Green */
+      printf("\033[1;32m");
+
+      printf("%s", cfs_filename);
+
+      /* set print colour back to normal */
+      printf("\033[0m");
+      printf(":");
+    }
+
+    Stack_List_Print_Directories(list, PRINT_HIERARCHY);
+    printf("$ ");
     fgets(buffer, MAX_BUFFER_SIZE, stdin);
     option = get_option(buffer);
 
@@ -63,7 +80,8 @@ int main(int argc, char* argv[])
     {
       case 1:
       {
-        if (!get_nth_string(cfs_filename, buffer, 2))
+        char new_cfs_filename[MAX_CFS_FILENAME_SIZE] = {0};
+        if (!get_nth_string(new_cfs_filename, buffer, 2))
         {
           printf("Error input, the name of the cfs file to work with has to be given.\n");
           break;
@@ -73,7 +91,7 @@ int main(int argc, char* argv[])
         hole_map* new_holes = NULL;
         Stack_List* new_list = NULL;
 
-        int new_fd = cfs_workwith(cfs_filename, &new_superblock, &new_holes, &new_list);
+        int new_fd = cfs_workwith(new_cfs_filename, &new_superblock, &new_holes, &new_list);
         if (new_fd == -1)
         {
           printf("Error with the given cfs filename.\n");
@@ -90,6 +108,7 @@ int main(int argc, char* argv[])
         fns = my_superblock->filename_size;
         max_entity_size = my_superblock->max_file_size;
         max_number_of_files = my_superblock->max_dir_file_number;
+        strcpy(cfs_filename, new_cfs_filename);
 
         /* close previous open file */
         if (fd != -1)
@@ -298,7 +317,7 @@ int main(int argc, char* argv[])
         int retval = get_cfs_create_parameters(buffer, &bs, &fns, &cfs, &mdfn, new_cfs_filename);
         if (!retval)
         {
-          printf("Error while reading the parameters of cfs_create.\n");
+          // printf("Error while reading the parameters of cfs_create.\n");
           break;
         }
 
@@ -333,8 +352,8 @@ int main(int argc, char* argv[])
 
   } while (option != 15);
 
+  if (max_entity_size || block_size);
 
-  printf("\n");
   free_mem(&my_superblock, &holes, &list);
 
   if (fd > 0)

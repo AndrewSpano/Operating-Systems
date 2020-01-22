@@ -2,7 +2,7 @@
 #define __STRUCTS__
 
 #define MAX_HOLES 1000
-#define PERMS 0777 // set access permissions
+#define PERMS 0777
 #define READ_WRITE_USER_GROUP_PERMS 0660
 
 
@@ -17,6 +17,8 @@
 #define DEFAULT_FNS 30
 #define DEFAULT_CFS 4096
 #define DEFAULT_MDFN 69
+
+#define PRINT_HIERARCHY 5
 
 
 

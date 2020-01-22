@@ -169,6 +169,50 @@ int Stack_List_Print_Path(Stack_List* list)
 
 
 
+int Stack_List_Print_Directories(Stack_List* list, int n)
+{
+  if (list == NULL || n <= 0)
+  {
+    return 0;
+  }
+
+  uint number_of_prints = n;
+  if (list->size < number_of_prints)
+  {
+    number_of_prints = list->size;
+  }
+
+  NodePtr temp = list->tail;
+  int i = 1;
+  for (; i < number_of_prints; i++)
+  {
+    temp = temp->prev;
+  }
+
+
+  // [0;34m	Blue
+  // [1;34m	Bold Blue
+
+  /* set print colour to Bold Blue */
+  printf("\033[1;34m");
+
+  printf("~");
+
+  while (number_of_prints > 0)
+  {
+    printf("/%s", temp->name);
+    temp = temp->next;
+    number_of_prints--;
+  }
+
+  /* set print colour back to normal */
+  printf("\033[0m");
+
+  return 1;
+}
+
+
+
 int Stack_List_Empty(Stack_List* list)
 {
   if (list == NULL || is_Empty(list))

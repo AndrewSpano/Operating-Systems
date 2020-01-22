@@ -32,6 +32,7 @@ int Stack_List_Pop(Stack_List* list);
 int Stack_List_Peek(Stack_List* list, char** name, off_t* offset);
 int Stack_List_Print(Stack_List* list);
 int Stack_List_Print_Path(Stack_List* list);
+int Stack_List_Print_Directories(Stack_List* list, int n);
 int Stack_List_Empty(Stack_List* list);
 int Stack_List_Destroy(Stack_List** list);
 
