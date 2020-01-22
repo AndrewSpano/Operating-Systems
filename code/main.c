@@ -76,6 +76,8 @@ int main(int argc, char* argv[])
     fgets(buffer, MAX_BUFFER_SIZE, stdin);
     option = get_option(buffer);
 
+
+
     switch (option)
     {
       case 1:
@@ -175,11 +177,6 @@ int main(int argc, char* argv[])
         }
 
         /* free the name of the current directory because we don't need it anymore */
-        int is_root = 0;
-        if (!strcmp("root", current_directory_name))
-        {
-          is_root = 1;
-        }
         free(current_directory_name);
 
 
@@ -194,17 +191,20 @@ int main(int argc, char* argv[])
           return EXIT_FAILURE;
         }
 
-        /* get its size in bytes */
-        size_t current_directory_size = current_directory->size;
 
         int index = 2;
         while (get_nth_string(new_directory_name, buffer, index))
         {
+          if (name_exists_in_directory(fd, current_directory, block_size, fns, new_directory_name))
+          {
+            printf("Cannot create directory '%s' because a directory with the same name already exists.\n", new_directory_name);
+            break;
+          }
+
           /* determine whether it can host a new sub-entity */
-          if (!is_root && number_of_sub_entities_in_directory(current_directory_size, fns) == max_number_of_files)
+          if (!is_in_Root(list) && number_of_sub_entities_in_directory(current_directory, fns) == max_number_of_files)
           {
             printf("Can't create the new directory '%s' because the current directory has already reached max number of sub-entites.\n", new_directory_name);
-
             break;
           }
 
@@ -238,6 +238,9 @@ int main(int argc, char* argv[])
 
       case 4:
       {
+        BREAK_IF_NO_FILE_OPEN(fd);
+
+        Stack_List_Print_Path(list);
 
         break;
       }

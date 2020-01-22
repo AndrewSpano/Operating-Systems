@@ -331,9 +331,54 @@ int shift_holes_to_the_right(hole_map* holes, uint hole_position)
 
 
 /* returns the number of sub-entites that the directory has */
-uint number_of_sub_entities_in_directory(size_t directory_data_size, size_t fns)
+uint number_of_sub_entities_in_directory(MDS* current_directory, size_t fns)
 {
+  size_t directory_data_size = current_directory->size;
   size_t size_of_pair = fns + sizeof(off_t);
+
   uint total_pairs = directory_data_size / size_of_pair;
   return total_pairs;
+}
+
+
+/* returns 1 if the name already exists in the directory as a sub-entity
+   else, returns 0 */
+int name_exists_in_directory(int fd, MDS* directory, size_t block_size, size_t fns, char* target_name)
+{
+  off_t block_position = directory->first_block;
+  size_t size_of_pair = fns + sizeof(off_t);
+
+  /* check all the blocks of a directory */
+  while (block_position != 0)
+  {
+    /* get the block that is being pointed at */
+    Block* block = get_Block(fd, block_size, block_position);
+    DIE_IF_NULL(block);
+
+    uint number_of_pairs = block->bytes_used / size_of_pair;
+    char* name = (char *) block->data;
+
+    int i = 0;
+    /* check all the names inside the data block of the directory */
+    for (; i < number_of_pairs; i++)
+    {
+      /* if we find a same name, return 1 */
+      if (!strcmp(name, target_name))
+      {
+        free(block);
+        return 1;
+      }
+
+      /* if not, point to the next name */
+      name = pointer_to_next_name(name, fns);
+    }
+
+    /* get the position of the next block */
+    block_position = block->next_block;
+    /* free the current block */
+    free(block);
+  }
+
+  /* return 0 if no same name is found after scanning all the directory blocks */
+  return 0;
 }

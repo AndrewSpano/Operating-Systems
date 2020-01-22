@@ -309,6 +309,9 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
   /* calculate the attributes that will be added to the current directory */
   size_t size_of_pair = fns + sizeof(off_t);
   current_directory->size += size_of_pair;
+
+  /* if retval == 1, it means that we allocated a new block to place the pair
+     <name, offset> */
   if (retval == 1)
   {
     current_directory->blocks_using++;
@@ -320,7 +323,6 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
   if (retval == 0)
   {
     perror("Error occured in set_MDS() when called from cfs_mkdir() before finishing the function");
-
     return 0;
   }
 
@@ -334,7 +336,6 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
   if (retval == 0)
   {
     perror("Error occured in set_superblock() when called from cfs_mkdir() before finishing the function");
-
     return 0;
   }
 
@@ -345,24 +346,6 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
 
 int cfs_touch(const char buffer[], int fd)
 {
-  // superblock* my_superblock = get_superblock(fd);
-  //
-  // size_t file_header_size = sizeof(MDS);
-  //
-  // /* create the struct */
-  // MDS* file_header = NULL;
-  // MALLOC_OR_DIE(file_header, file_header_size, fd);
-  //
-  // /* initialize its values */
-  // initialize_MDS(file_header, 2, FILE, 1, 1, file_header_size + bs, superblock_size + hole_map_size, superblock_size + hole_map_size + file_header_size);
-  //
-  // /* write to the cfs file */
-  // WRITE_OR_DIE(fd, file_header, file_header_size);
-  //
-  //
-  //
-  // free(file_header);
-  // free(superblock);
 
   return 1;
 }

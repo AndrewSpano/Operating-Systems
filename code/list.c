@@ -56,6 +56,13 @@ int is_Empty(Stack_List* list)
 
 
 
+int is_in_Root(Stack_List* list)
+{
+  return list->size == 1;
+}
+
+
+
 int Stack_List_Push(Stack_List* list, char* name, off_t offset)
 {
   if (is_Empty(list))
