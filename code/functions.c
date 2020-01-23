@@ -478,7 +478,7 @@ int cfs_cd(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
 
   /* if the command "cfs_cd" is given or the path is absolute, just go to the
      root directory */
-  if (path[0] = 0 || path_is_absolute(path))
+  if (path[0] == 0 || path_is_absolute(path))
   {
     while (!is_in_Root(list))
     {
@@ -490,6 +490,7 @@ int cfs_cd(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
 
 
   size_t fns = my_superblock->filename_size;
+  size_t block_size = my_superblock->block_size;
   /* temp variable to store the name of the current directory */
   char* temp_directory = NULL;
   MALLOC_OR_DIE_3(temp_directory, fns);
@@ -506,7 +507,7 @@ int cfs_cd(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
     }
 
     /* if the string ends, break */
-    if (path[path_index] == 0 || (path[path_index] == '\n' || (path[path_index] == '\t')
+    if ((path[path_index] == 0) || (path[path_index] == '\n') || (path[path_index] == '\t'))
     {
       break;
     }
@@ -528,7 +529,7 @@ int cfs_cd(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
 
       if (name_index == fns)
       {
-        printf("The name of a directory is too big. The maximum number of characters that a name of an entity can have, is fns: %d.\n", fns);
+        printf("The name of a directory is too big. The maximum number of characters that a name of an entity can have, is fns: %ld.\n", fns);
         free(temp_directory);
         return 0;
       }
@@ -572,7 +573,7 @@ int cfs_cd(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
     if (directory_offset == (off_t) -1)
     {
       char wrong_directory[MAX_BUFFER_SIZE] = {0};
-      strcpy(wrong_directory, path, path_index + 1);
+      memcpy(wrong_directory, path, path_index + 1);
 
       printf("Error: directory %s does not exist.\n", wrong_directory);
       free(current_directory);
@@ -588,9 +589,9 @@ int cfs_cd(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
     }
 
     free(current_directory);
-    
 
-    memset(name_index, 0, fns);
+
+    memset(temp_directory, 0, fns);
   }
 
 

@@ -29,8 +29,6 @@ void free_mem(superblock** my_superblock, hole_map** holes, Stack_List** list)
 
 int main(int argc, char* argv[])
 {
-
-  int f;
   /* variable used to read input from the user */
   char buffer[MAX_BUFFER_SIZE] = {0};
 
@@ -425,7 +423,7 @@ int main(int argc, char* argv[])
         /* handle too big paths that overflow the path array */
         if (strlen(path) == MAX_BUFFER_SIZE && path[MAX_BUFFER_SIZE - 1] != 0)
         {
-          printf("Path given is too big. Give a path that has totally less than %s characters.\n", MAX_BUFFER_SIZE);
+          printf("Path given is too big. Give a path that has totally less than %d characters.\n", MAX_BUFFER_SIZE);
           break;
         }
 
