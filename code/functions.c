@@ -548,13 +548,8 @@ int cfs_cd(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
     off_t current_directory_offset = (off_t) 0;
 
     /* get the location of the MDS of the directory */
-    int retval = Stack_List_Peek(list, &current_directory_name, &current_directory_offset);
-    if (retval != 1)
-    {
-      printf("Stack_List_Peek() error cfs_cd().\n");
-      free(temp_directory);
-      return 0;
-    }
+    Stack_List_Peek(list, &current_directory_name, &current_directory_offset);
+
     /* free the name of the current directory because we don't need it anymore */
     free(current_directory_name);
 
