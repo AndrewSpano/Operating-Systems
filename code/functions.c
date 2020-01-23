@@ -582,10 +582,23 @@ int cfs_cd(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
       free(temp_directory);
       return 0;
     }
-
     free(current_directory);
 
 
+    char* address_for_list = malloc((strlen(temp_directory) + 1) * sizeof(char));
+    if (address_for_list == NULL)
+    {
+      perror("malloc() error");
+      free(temp_directory);
+      return 0;
+    }
+    /* copy the name inside the address */
+    strcpy(address_for_list, temp_directory);
+
+    /* put the new pair inside the directory */
+    Stack_List_Push(list, address_for_list, directory_offset);
+
+    /* reset the memory for the temporary directory */
     memset(temp_directory, 0, fns);
   }
 
