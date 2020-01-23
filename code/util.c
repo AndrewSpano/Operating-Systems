@@ -61,7 +61,6 @@ int get_nth_string(char* str, const char buf[], int n)
 
     if (i == MAX_BUFFER_SIZE)
     {
-      memset(str, 0, k);
       return 0;
     }
   }
@@ -234,6 +233,11 @@ int contains_unknown_flag(const char* str, const char* flags)
 }
 
 
+/* returns non-negative value if the path given is absolute; else returns 0 */
+int path_is_absolute(const char path[])
+{
+  return path[0] == '/';
+}
 
 
 /* --------------------------------       GET FUNCTION PARAMETERS           ----------------------------------- */

@@ -48,10 +48,96 @@ Stack_List* create_List(void)
 
 
 
+Stack_List* copy_List(Stack_List* list)
+{
+  if (is_Empty(list))
+  {
+    return NULL;
+  }
+
+  /* create the new list */
+  Stack_List* copy_list = create_List();
+  if (copy_list == NULL)
+  {
+    return NULL;
+  }
+
+
+  char* new_name = malloc((strlen(list->head->name) + 1) * sizeof(char));
+  if (new_name == NULL)
+  {
+    perror("malloc() error");
+    free(copy_list);
+    return NULL;
+  }
+  strcpy(new_name, list->head->name);
+
+
+  /* copy the first node */
+  copy_list->head = create_node(new_name, list->head->offset, NULL, NULL);
+  if (copy_list->head == NULL)
+  {
+    perror("malloc() error in new_node()");
+    free(new_name);
+    free(copy_list);
+    return NULL;
+  }
+  copy_list->tail = copy_list->head;
+
+  int len = list->size;
+  /* if the list has more than 1 nodes, copy the rest of them */
+  if (len > 1)
+  {
+    NodePtr temp = list->head->next;
+    NodePtr temp_copy = copy_list->head;
+    int i = 1;
+    /* iterate to copy the nodes */
+    for (; i < len; i++)
+    {
+      char* temp_name = malloc((strlen(temp->name) + 1) * sizeof(char));
+      if (temp_name == NULL)
+      {
+        perror("malloc() error");
+        free(copy_list);
+        return NULL;
+      }
+      strcpy(temp_name, temp->name);
+
+      temp_copy->next = create_node(temp_name, temp->offset, temp_copy, NULL);
+      if (temp_copy->next == NULL)
+      {
+        perror("malloc() error in new_node()");
+        free(temp_name);
+        free(copy_list);
+        return NULL;
+      }
+
+      temp = temp->next;
+      temp_copy = temp_copy->next;
+    }
+
+    /* set the tail */
+    copy_list->tail = temp_copy;
+  }
+
+
+
+  copy_list->size = len;
+  return copy_list;
+}
+
+
 
 int is_Empty(Stack_List* list)
 {
   return list->size == 0;
+}
+
+
+
+uint get_Stack_List_Size(Stack_List* list)
+{
+  return list->size;
 }
 
 
@@ -147,7 +233,7 @@ int Stack_List_Print(Stack_List* list)
   NodePtr temp = list->head;
   while (temp != NULL)
   {
-    printf("Directory: %s,\toffset: %lu\n", temp->name, temp->offset);
+    printf("Directory:   %s   offset: %lu\n", temp->name, temp->offset);
     temp = temp->next;
   }
 

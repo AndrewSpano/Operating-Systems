@@ -26,7 +26,9 @@ NodePtr create_node(char* name, off_t offset, NodePtr prev, NodePtr next);
 void node_destroy(NodePtr* node);
 
 Stack_List* create_List(void);
+Stack_List* copy_List(Stack_List* list);
 int is_Empty(Stack_List* list);
+uint get_Stack_List_Size(Stack_List* list);
 int is_in_Root(Stack_List* list);
 int Stack_List_Push(Stack_List* list, char* name, off_t offset);
 int Stack_List_Pop(Stack_List* list);

@@ -406,6 +406,36 @@ int main(int argc, char* argv[])
 
       case 5:
       {
+        BREAK_IF_NO_FILE_OPEN(fd);
+
+        char spam[MAX_BUFFER_SIZE] = {0};
+        if (get_nth_string(spam, buffer, 3))
+        {
+          printf("Error: too many arguments for cd.\n");
+          break;
+        }
+
+        char path[MAX_BUFFER_SIZE] = {0};
+        /* get the path */
+        get_nth_string(path, buffer, 2);
+
+
+        /* handle too big paths that overflow the path array */
+        if (strlen(path) == MAX_BUFFER_SIZE && path[MAX_BUFFER_SIZE - 1] != 0)
+        {
+          printf("Path given is too big. Give a path that has totally less than %s characters.\n", MAX_BUFFER_SIZE);
+          break;
+        }
+
+        /* create a copy of the list (of the current path) */
+        Stack_List* copy_list = copy_List(list);
+        if (copy_list == NULL)
+        {
+          printf("Error: copy_List() returned NULL.\n");
+          break;
+        }
+
+        int retval = cfs_cd(fd, my_superblock, holes, copy_list, path);
 
         break;
       }

@@ -467,6 +467,139 @@ int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
 
 
 
+int cfs_cd(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list, const char path[])
+{
+  /* this should never print */
+  if (is_Empty(list))
+  {
+    printf("Bug: list is empty.\n");
+    return -1;
+  }
+
+  /* if the command "cfs_cd" is given or the path is absolute, just go to the
+     root directory */
+  if (path[0] = 0 || path_is_absolute(path))
+  {
+    while (!is_in_Root(list))
+    {
+      Stack_List_Pop(list);
+    }
+
+    return 1;
+  }
+
+
+  size_t fns = my_superblock->filename_size;
+  /* temp variable to store the name of the current directory */
+  char* temp_directory = NULL;
+  MALLOC_OR_DIE_3(temp_directory, fns);
+
+
+  int is_finished = 0;
+  int path_index = 0;
+  while (!is_finished)
+  {
+    /* while the character '/' is being read, ignore it */
+    while (path[path_index] == '/')
+    {
+      path_index++;
+    }
+
+    /* if the string ends, break */
+    if (path[path_index] == 0 || (path[path_index] == '\n' || (path[path_index] == '\t')
+    {
+      break;
+    }
+
+    int name_index = 0;
+    /* get the next directory */
+    while ((path[path_index] != 0) && (path[path_index] != '\n') && (path[path_index] != '\t') && (path[path_index] != '/'))
+    {
+      temp_directory[name_index] = path[path_index];
+      name_index++;
+      path_index++;
+
+      if (path_index == MAX_BUFFER_SIZE)
+      {
+        printf("Error: the path exceeds the max number of availabe characters (%d) for a path. This should have been checked in main.\n", MAX_BUFFER_SIZE);
+        free(temp_directory);
+        return 0;
+      }
+
+      if (name_index == fns)
+      {
+        printf("The name of a directory is too big. The maximum number of characters that a name of an entity can have, is fns: %d.\n", fns);
+        free(temp_directory);
+        return 0;
+      }
+    }
+
+
+
+    /* get the info of the current directory that we are in */
+    char* current_directory_name = malloc(fns * sizeof(char));
+    if (current_directory_name == NULL)
+    {
+      perror("malloc() error");
+      free(temp_directory);
+      return 0;
+    }
+    off_t current_directory_offset = (off_t) 0;
+
+    /* get the location of the MDS of the directory */
+    int retval = Stack_List_Peek(list, &current_directory_name, &current_directory_offset);
+    if (retval != 1)
+    {
+      printf("Stack_List_Peek() error cfs_cd().\n");
+      free(temp_directory);
+      return 0;
+    }
+    /* free the name of the current directory because we don't need it anymore */
+    free(current_directory_name);
+
+    /* get the current directory */
+    MDS* current_directory = get_MDS(fd, current_directory_offset);
+    if (current_directory == NULL)
+    {
+      printf("get_MDS() error in cfs_cd().\n");
+      free(temp_directory);
+      return 0;
+    }
+
+
+
+    off_t directory_offset = directory_get_offset(fd, current_directory, block_size, fns, temp_directory);
+    if (directory_offset == (off_t) -1)
+    {
+      char wrong_directory[MAX_BUFFER_SIZE] = {0};
+      strcpy(wrong_directory, path, path_index + 1);
+
+      printf("Error: directory %s does not exist.\n", wrong_directory);
+      free(current_directory);
+      free(temp_directory);
+      return 0;
+    }
+    else if (directory_offset == (off_t) 0)
+    {
+      printf("Unexpected directory_offset() error.\n");
+      free(current_directory);
+      free(temp_directory);
+      return 0;
+    }
+
+    free(current_directory);
+    
+
+    memset(name_index, 0, fns);
+  }
+
+
+  free(temp_directory);
+  return 1;
+}
+
+
+
 
 int cfs_read(char* cfs_filename, int fd)
 {
