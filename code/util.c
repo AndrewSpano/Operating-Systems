@@ -558,13 +558,13 @@ void initialize_Directory_Data_Block(Block* block, size_t fns, off_t self_offset
   char* name = (char *) block->data;
   off_t* offset = pointer_to_offset(name, fns);
 
-  strcpy(name, "./");
+  strcpy(name, ".");
   *offset = self_offset;
 
   name = pointer_to_next_name(name, fns);
   offset = pointer_to_offset(name, fns);
 
-  strcpy(name, "../");
+  strcpy(name, "..");
   *offset = parent_offset;
 
   /* we have currently stored 2 directories (./ and ../, and their offsets) */

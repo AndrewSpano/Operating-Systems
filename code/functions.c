@@ -535,68 +535,82 @@ int cfs_cd(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
       }
     }
 
-
-
-    /* get the info of the current directory that we are in */
-    char* current_directory_name = malloc(fns * sizeof(char));
-    if (current_directory_name == NULL)
+    if (!strcmp(temp_directory, ".."))
     {
-      perror("malloc() error");
-      free(temp_directory);
-      return 0;
+      if (!is_in_Root(list))
+      {
+        Stack_List_Pop(list);
+      }
     }
-    off_t current_directory_offset = (off_t) 0;
-
-    /* get the location of the MDS of the directory */
-    Stack_List_Peek(list, &current_directory_name, &current_directory_offset);
-
-    /* free the name of the current directory because we don't need it anymore */
-    free(current_directory_name);
-
-    /* get the current directory */
-    MDS* current_directory = get_MDS(fd, current_directory_offset);
-    if (current_directory == NULL)
+    else if (!strcmp(temp_directory, "."))
     {
-      printf("get_MDS() error in cfs_cd().\n");
-      free(temp_directory);
-      return 0;
+      /* do nothing */
     }
-
-
-
-    off_t directory_offset = directory_get_offset(fd, current_directory, block_size, fns, temp_directory);
-    if (directory_offset == (off_t) -1)
+    else
     {
-      char wrong_directory[MAX_BUFFER_SIZE] = {0};
-      memcpy(wrong_directory, path, path_index + 1);
 
-      printf("Error: directory %s does not exist.\n", wrong_directory);
+      /* get the info of the current directory that we are in */
+      char* current_directory_name = malloc(fns * sizeof(char));
+      if (current_directory_name == NULL)
+      {
+        perror("malloc() error");
+        free(temp_directory);
+        return 0;
+      }
+      off_t current_directory_offset = (off_t) 0;
+
+      /* get the location of the MDS of the directory */
+      Stack_List_Peek(list, &current_directory_name, &current_directory_offset);
+
+      /* free the name of the current directory because we don't need it anymore */
+      free(current_directory_name);
+
+      /* get the current directory */
+      MDS* current_directory = get_MDS(fd, current_directory_offset);
+      if (current_directory == NULL)
+      {
+        printf("get_MDS() error in cfs_cd().\n");
+        free(temp_directory);
+        return 0;
+      }
+
+
+
+      off_t directory_offset = directory_get_offset(fd, current_directory, block_size, fns, temp_directory);
+      if (directory_offset == (off_t) -1)
+      {
+        char wrong_directory[MAX_BUFFER_SIZE] = {0};
+        memcpy(wrong_directory, path, path_index + 1);
+
+        printf("Error: directory %s does not exist.\n", wrong_directory);
+        free(current_directory);
+        free(temp_directory);
+        return 0;
+      }
+      else if (directory_offset == (off_t) 0)
+      {
+        printf("Unexpected directory_offset() error.\n");
+        free(current_directory);
+        free(temp_directory);
+        return 0;
+      }
       free(current_directory);
-      free(temp_directory);
-      return 0;
-    }
-    else if (directory_offset == (off_t) 0)
-    {
-      printf("Unexpected directory_offset() error.\n");
-      free(current_directory);
-      free(temp_directory);
-      return 0;
-    }
-    free(current_directory);
 
 
-    char* address_for_list = malloc((strlen(temp_directory) + 1) * sizeof(char));
-    if (address_for_list == NULL)
-    {
-      perror("malloc() error");
-      free(temp_directory);
-      return 0;
-    }
-    /* copy the name inside the address */
-    strcpy(address_for_list, temp_directory);
+      char* address_for_list = malloc((strlen(temp_directory) + 1) * sizeof(char));
+      if (address_for_list == NULL)
+      {
+        perror("malloc() error");
+        free(temp_directory);
+        return 0;
+      }
+      /* copy the name inside the address */
+      strcpy(address_for_list, temp_directory);
 
-    /* put the new pair inside the directory */
-    Stack_List_Push(list, address_for_list, directory_offset);
+      /* put the new pair inside the directory */
+      Stack_List_Push(list, address_for_list, directory_offset);
+    }
+
 
     /* reset the memory for the temporary directory */
     memset(temp_directory, 0, fns);
