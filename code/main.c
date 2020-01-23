@@ -29,6 +29,8 @@ void free_mem(superblock** my_superblock, hole_map** holes, Stack_List** list)
 
 int main(int argc, char* argv[])
 {
+
+  int f;
   /* variable used to read input from the user */
   char buffer[MAX_BUFFER_SIZE] = {0};
 
