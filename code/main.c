@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
 
           return EXIT_FAILURE;
         }
-        off_t current_directory_offset = 0;
+        off_t current_directory_offset = (off_t) 0;
 
         /* get the location of the MDS of the directory */
         int retval = Stack_List_Peek(list, &current_directory_name, &current_directory_offset);
@@ -193,18 +193,38 @@ int main(int argc, char* argv[])
 
 
         int index = 2;
-        while (get_nth_string(new_directory_name, buffer, index))
+        /* for every directory name given */
+        int directory_exists = get_nth_string(new_directory_name, buffer, index);
+        while (directory_exists)
         {
-          if (name_exists_in_directory(fd, current_directory, block_size, fns, new_directory_name))
+          off_t directory_offset = directory_get_offset(fd, current_directory, block_size, fns, new_directory_name);
+          if (directory_offset == (off_t) 0)
           {
-            printf("Cannot create directory '%s' because a directory with the same name already exists.\n", new_directory_name);
-            break;
+            printf("Unexpected error occured in directory_get_offset(). Exiting..\n");
+            free(current_directory);
+            free(new_directory_name);
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
           }
+          else if (directory_offset != (off_t) -1)
+          {
+            printf("Cannot create directory '%s' because an entity with the same name already exists in the current directory.\n", new_directory_name);
+            index++;
+            directory_exists = get_nth_string(new_directory_name, buffer, index);
+            if (directory_exists)
+            {
+              continue;
+            }
+            else
+            {
+              break;
+            }
+          }
+
 
           /* determine whether it can host a new sub-entity */
           if (!is_in_Root(list) && number_of_sub_entities_in_directory(current_directory, fns) == max_number_of_files)
           {
-            printf("Can't create the new directory '%s' because the current directory has already reached max number of sub-entites.\n", new_directory_name);
+            printf("Can't create the directory '%s' because the current directory has already reached max number of sub-entites.\n", new_directory_name);
             break;
           }
 
@@ -222,6 +242,7 @@ int main(int argc, char* argv[])
           }
 
           index++;
+          directory_exists = get_nth_string(new_directory_name, buffer, index);
         }
 
         free(current_directory);
@@ -232,6 +253,144 @@ int main(int argc, char* argv[])
 
       case 3:
       {
+        BREAK_IF_NO_FILE_OPEN(fd);
+
+        char* new_file_name = malloc(fns * sizeof(char));
+        if (new_file_name == NULL)
+        {
+          perror("malloc() error");
+          FREE_AND_CLOSE(my_superblock, holes, list, fd);
+
+          return EXIT_FAILURE;
+        }
+
+
+        if (!get_nth_string(new_file_name, buffer, 2))
+        {
+          printf("Error input, missing file operand.\n");
+          free(new_file_name);
+
+          break;
+        }
+
+        int flag_a = 0;
+        int flag_m = 0;
+        int valid_parameters = get_cfs_touch_parameters(buffer, &flag_a, &flag_m);
+        if (!valid_parameters)
+        {
+          free(new_file_name);
+          break;
+        }
+        else if (flag_a && flag_m)
+        {
+          printf("Error: parameters -a and -m cannot be given at the same time.");
+          free(new_file_name);
+          break;
+        }
+
+
+        /* get the info of the current directory that we are in */
+        char* current_directory_name = malloc(fns * sizeof(char));
+        if (current_directory_name == NULL)
+        {
+          perror("malloc() error");
+          free(new_file_name);
+          FREE_AND_CLOSE(my_superblock, holes, list, fd);
+
+          return EXIT_FAILURE;
+        }
+        off_t current_directory_offset = (off_t) 0;
+
+        /* get the location of the MDS of the directory */
+        int retval = Stack_List_Peek(list, &current_directory_name, &current_directory_offset);
+        if (retval != 1)
+        {
+          printf("Stack_List_Peek() error in main() before calling cfs_touch().\n");
+          free(new_file_name);
+          free(current_directory_name);
+          FREE_AND_CLOSE(my_superblock, holes, list, fd);
+
+          return EXIT_FAILURE;
+        }
+
+        /* free the name of the current directory because we don't need it anymore */
+        free(current_directory_name);
+
+
+        /* get the current directory */
+        MDS* current_directory = get_MDS(fd, current_directory_offset);
+        if (current_directory == NULL)
+        {
+          printf("get_MDS() error in main() before calling cfs_touch().\n");
+          free(new_file_name);
+          FREE_AND_CLOSE(my_superblock, holes, list, fd);
+
+          return EXIT_FAILURE;
+        }
+
+
+        int index = 2;
+        /* skip the parameter (options) strings */
+        while (is_parameter(new_file_name))
+        {
+          index++;
+          get_nth_string(new_file_name, buffer, index);
+        }
+
+        /* for every directory name given */
+        int file_exists = get_nth_string(new_file_name, buffer, index);
+        while (file_exists)
+        {
+          off_t file_offset = directory_get_offset(fd, current_directory, block_size, fns, new_file_name);
+          if (file_offset == (off_t) 0)
+          {
+            printf("Unexpected error occured in directory_get_offset(). Exiting..\n");
+            free(current_directory);
+            free(new_file_name);
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+          }
+          else if (file_offset != (off_t) -1 && (!flag_a || !flag_m))
+          {
+            printf("Cannot create file '%s' because an entity with the same name already exists in the current directory.\n", new_file_name);
+            index++;
+            file_exists = get_nth_string(new_file_name, buffer, index);
+            if (file_exists)
+            {
+              continue;
+            }
+            else
+            {
+              break;
+            }
+          }
+
+
+          /* determine whether it can host a new sub-entity */
+          if (!is_in_Root(list) && number_of_sub_entities_in_directory(current_directory, fns) == max_number_of_files)
+          {
+            printf("Can't create the file '%s' because the current directory has already reached max number of sub-entites.\n", new_file_name);
+            break;
+          }
+
+          /* if we reach here it means that we can create/modify a file inside the current directory */
+          retval = cfs_touch(fd, my_superblock, holes, list, current_directory, current_directory_offset, new_file_name, file_offset, flag_a, flag_m);
+          if (!retval)
+          {
+            printf("Unexpected error occured in cfs_touch(). Exiting..\n");
+            free(current_directory);
+            free(new_file_name);
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+
+            return EXIT_FAILURE;
+          }
+
+          index++;
+          file_exists = get_nth_string(new_file_name, buffer, index);
+        }
+
+
+        free(current_directory);
+        free(new_file_name);
 
         break;
       }

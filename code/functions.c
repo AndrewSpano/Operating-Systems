@@ -304,19 +304,18 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
     printf("insert_pair() error when called from cfs_mkdir()\n");
     return 0;
   }
+  /* if retval == 1, it means that we allocated a new block to place the pair <name, offset> */
+  else if (retval == 1)
+  {
+    current_directory->blocks_using++;
+    my_superblock->current_size += block_size;
+  }
 
 
   /* calculate the attributes that will be added to the current directory */
   size_t size_of_pair = fns + sizeof(off_t);
   current_directory->size += size_of_pair;
 
-  /* if retval == 1, it means that we allocated a new block to place the pair
-     <name, offset> */
-  if (retval == 1)
-  {
-    current_directory->blocks_using++;
-    my_superblock->current_size += block_size;
-  }
 
   /* update the current_directory */
   retval = set_MDS(current_directory, fd, parent_offset);
@@ -344,11 +343,128 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
 
 
 
-int cfs_touch(const char buffer[], int fd)
+int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list, MDS* current_directory, off_t parent_offset, char* insert_name, off_t file_offset, int flag_a, int flag_m)
 {
+
+  /* first check if any flag is true, in order to perform its operation */
+  if ((flag_a || flag_m) && file_offset != (off_t) -1)
+  {
+
+    /* get the file */
+    MDS* target_file = get_MDS(fd, file_offset);
+    if (target_file == NULL)
+    {
+      printf("get_MDS() error in cfs_touch().\n");
+      return 0;
+    }
+
+    if (target_file->type != FILE)
+    {
+      printf("Error: entity with name %s is not a file.\n", insert_name);
+      free(target_file);
+      return -1;
+    }
+
+    time_t my_time = time(NULL);
+    if (flag_a)
+    {
+      target_file->access_time = my_time;
+    }
+    else
+    {
+      target_file->modification_time = my_time;
+    }
+
+    /* update the file that was modified */
+    int retval = set_MDS(target_file, fd, file_offset);
+    if (retval == 0)
+    {
+      perror("Error occured in set_MDS()");
+      FREE_IF_NOT_NULL(target_file);
+      return 0;
+    }
+
+    free(target_file);
+    return 1;
+  }
+
+  /* create new file */
+  size_t block_size = my_superblock->block_size;
+  size_t fns = my_superblock->filename_size;
+  uint total_entities = my_superblock->total_entities;
+
+  size_t size_of_mds = sizeof(MDS);
+  off_t mds_position = find_hole(holes, size_of_mds);
+
+  if (mds_position == 0)
+  {
+    printf("No more holes are available. Make the hole map bigger in the next cfs file you make\n");
+    return 0;
+  }
+
+
+  /* create the struct */
+  MDS* new_mds = NULL;
+  MALLOC_OR_DIE_3(new_mds, sizeof(MDS));
+  /* initialize its values */
+  initialize_MDS(new_mds, total_entities, FILE, 1, 0, 0, parent_offset, 0);
+
+  /* write to the cfs file */
+  int retval = set_MDS(new_mds, fd, mds_position);
+  if (retval == 0)
+  {
+    perror("Error occured in set_MDS() when called from cfs_touch()");
+    free(new_mds);
+
+    return 0;
+  }
+
+  free(new_mds);
+
+
+  /* insert the pair in the current directory */
+  retval = insert_pair(fd, holes, current_directory, insert_name, mds_position, block_size, fns);
+  if (retval == 0)
+  {
+    printf("insert_pair() error when called from cfs_touch()\n");
+    return 0;
+  }
+  /* if retval == 1, it means that we allocated a new block to place the pair <name, offset> */
+  else if (retval == 1)
+  {
+    current_directory->blocks_using++;
+    my_superblock->current_size += block_size;
+  }
+
+  /* calculate the attributes that will be added to the current directory */
+  size_t size_of_pair = fns + sizeof(off_t);
+  current_directory->size += size_of_pair;
+
+
+  /* update the current_directory */
+  retval = set_MDS(current_directory, fd, parent_offset);
+  if (retval == 0)
+  {
+    perror("Error occured in set_MDS() when called from cfs_touch() before finishing the function");
+    return 0;
+  }
+
+
+  /* update the superblock */
+  my_superblock->total_entities += 1;
+  /* the size of the new file */
+  my_superblock->current_size += sizeof(MDS);
+
+  retval = set_superblock(my_superblock, fd);
+  if (retval == 0)
+  {
+    perror("Error occured in set_superblock() when called from cfs_touch() before finishing the function");
+    return 0;
+  }
 
   return 1;
 }
+
 
 
 

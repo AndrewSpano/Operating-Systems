@@ -17,6 +17,6 @@ int shift_holes_to_the_left(hole_map* holes, uint hole_position);
 int shift_holes_to_the_right(hole_map* holes, uint hole_position);
 
 uint number_of_sub_entities_in_directory(MDS* current_directory, size_t fns);
-int name_exists_in_directory(int fd, MDS* directory, size_t block_size, size_t fns, char* target_name);
+off_t directory_get_offset(int fd, MDS* directory, size_t block_size, size_t fns, char* target_name);
 
 #endif

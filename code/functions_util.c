@@ -343,7 +343,7 @@ uint number_of_sub_entities_in_directory(MDS* current_directory, size_t fns)
 
 /* returns 1 if the name already exists in the directory as a sub-entity
    else, returns 0 */
-int name_exists_in_directory(int fd, MDS* directory, size_t block_size, size_t fns, char* target_name)
+off_t directory_get_offset(int fd, MDS* directory, size_t block_size, size_t fns, char* target_name)
 {
   off_t block_position = directory->first_block;
   size_t size_of_pair = fns + sizeof(off_t);
@@ -353,7 +353,11 @@ int name_exists_in_directory(int fd, MDS* directory, size_t block_size, size_t f
   {
     /* get the block that is being pointed at */
     Block* block = get_Block(fd, block_size, block_position);
-    DIE_IF_NULL(block);
+    if (block == NULL)
+    {
+      perror("malloc() error in directory_get_offset()");
+      return (off_t) 0;
+    }
 
     uint number_of_pairs = block->bytes_used / size_of_pair;
     char* name = (char *) block->data;
@@ -365,8 +369,10 @@ int name_exists_in_directory(int fd, MDS* directory, size_t block_size, size_t f
       /* if we find a same name, return 1 */
       if (!strcmp(name, target_name))
       {
+        off_t* ptr = pointer_to_offset(name, fns);
+        off_t return_offset = *ptr;
         free(block);
-        return 1;
+        return return_offset;
       }
 
       /* if not, point to the next name */
@@ -380,5 +386,5 @@ int name_exists_in_directory(int fd, MDS* directory, size_t block_size, size_t f
   }
 
   /* return 0 if no same name is found after scanning all the directory blocks */
-  return 0;
+  return (off_t) -1;
 }
