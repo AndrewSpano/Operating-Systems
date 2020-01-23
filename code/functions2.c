@@ -102,33 +102,27 @@ int cfs_ls(int fd, off_t offset)
 
   }
 
-  //LOUZEI
-  if (my_block->next_block != 0)
+
+  /*if there is more than 1 blocks for data*/  
+  while (my_block->next_block != 0)
   {
     Block* temp_block = my_block;
     my_block = get_Block(fd, my_superblock->block_size, my_block->next_block);
     free(temp_block);
 
-    /*if there is more than 1 blocks for data*/  
-    while (my_block != 0) 
+    
+  
+    char* ret_name = (char *) my_block->data; //.
+    printf("%s ", ret_name);
+    // off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+    int i = 1;
+    for (; i < pairs_in_block; i++)
     {
-      char* ret_name = (char *) my_block->data; //.
+      ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size);
       printf("%s ", ret_name);
-      // off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
-      int i = 1;
-      for (; i < pairs_in_block; i++)
-      {
-        ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size);
-        printf("%s ", ret_name);
-        // ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
-        // printf("%s\n", ret_offset);
-      } 
-
-      /*get next block*/
-      Block* temp_block = my_block;
-      my_block = get_Block(fd, my_superblock->block_size, my_block->next_block);
-      free(temp_block);
-    }  
+      // ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+      // printf("%s\n", ret_offset);
+    } 
   }
 
   printf("\n");
