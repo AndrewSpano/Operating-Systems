@@ -8,5 +8,8 @@
 
 int get_nth_pair(MDS* mds, char** name, off_t* offset, int fd, int n);
 
+int cfs_ls(int fd, off_t offset);
+
+
 
 #endif
