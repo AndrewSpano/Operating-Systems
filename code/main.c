@@ -442,16 +442,7 @@ int main(int argc, char* argv[])
 
       case 6:
       {
-        char* cur_name = malloc(MAX_CFS_FILENAME_SIZE * sizeof(char));
-        off_t cur_offset;
-        Stack_List_Peek(list, &cur_name, &cur_offset);
 
-        MDS* cur_mds = get_MDS(fd, cur_offset);
-        char *name;
-        off_t offset;
-        get_nth_pair(cur_mds, &name, &offset, fd, 2);
-        printf("main name %s\n", name);
-        printf("main offset %lu\n", offset);
         break;
       }
 
