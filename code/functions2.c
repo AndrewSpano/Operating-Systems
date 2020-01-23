@@ -83,6 +83,7 @@ int cfs_ls(int fd, off_t offset)
   size_t size_of_pair = my_superblock->filename_size + sizeof(off_t);
   size_t pairs_in_block = my_block->bytes_used / size_of_pair;
   size_t max_pairs = size_for_pairs / size_of_pair;
+  if (max_pairs);
 
   char* ret_name = (char *) my_block->data; //.
   // printf("first name: %s\n", ret_name);
@@ -112,7 +113,7 @@ int cfs_ls(int fd, off_t offset)
 
     
   
-    char* ret_name = (char *) my_block->data;
+    char* ret_name = (char *) my_block->data; //.
     printf("%s ", ret_name);
     // off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
     int i = 1;
@@ -124,7 +125,7 @@ int cfs_ls(int fd, off_t offset)
       printf("%s ", ret_name);
       // ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
       // printf("%s\n", ret_offset);
-    } 
+    // } 
       // off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
       int i = 1;
       for (; i < pairs_in_block; i++)

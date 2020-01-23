@@ -454,6 +454,11 @@ int main(int argc, char* argv[])
 
       case 6:
       {
+        char* cur_name = malloc(MAX_CFS_FILENAME_SIZE * sizeof(char));
+        off_t cur_offset;
+        Stack_List_Peek(list, &cur_name, &cur_offset);
+
+        cfs_ls(fd, cur_offset);
 
         break;
       }
