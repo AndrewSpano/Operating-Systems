@@ -436,6 +436,18 @@ int main(int argc, char* argv[])
         }
 
         int retval = cfs_cd(fd, my_superblock, holes, copy_list, path);
+        /* check if the operation failed */
+        if (retval == 0)
+        {
+          Stack_List_Destroy(&copy_list);
+          break;
+        }
+
+        /* "destroy" the previous path */
+        Stack_List_Destroy(&list);
+
+        /* get the new path */
+        list = copy_list;
 
         break;
       }

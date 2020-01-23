@@ -12,7 +12,7 @@
 
 
 int get_nth_pair(MDS* mds, char** name, off_t* offset, int fd, int n)
-{ 
+{
   superblock* my_superblock = get_superblock(fd);
   Block* my_block = get_Block(fd, my_superblock->block_size, mds->first_block);
 
@@ -20,29 +20,29 @@ int get_nth_pair(MDS* mds, char** name, off_t* offset, int fd, int n)
   size_t size_for_pairs = my_superblock->block_size - size_of_struct_variables;
   size_t size_of_pair = my_superblock->filename_size + sizeof(off_t);
   size_t pairs_in_block = my_block->bytes_used / size_of_pair;
-  
+
   if (pairs_in_block < n)
   {
     printf("error: wrong n\n");
     return 0;
   }
 
-  
+
   size_t max_pairs = size_for_pairs / size_of_pair;
-  
+
   while(n > max_pairs)
   {
     Block* temp_block = my_block;
     my_block = get_Block(fd, my_superblock->block_size, my_block->next_block);
     free(temp_block);
-    n = n - max_pairs; 
-  } 
+    n = n - max_pairs;
+  }
 
   char* ret_name = (char *) my_block->data;
   // printf("first name: %s\n", ret_name);
   off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
   // printf("offset for name: %lu\n", *ret_offset);
-  
+
   int j = 1;
   for (; j < n ; j++)
   {
@@ -52,7 +52,7 @@ int get_nth_pair(MDS* mds, char** name, off_t* offset, int fd, int n)
 
   free(my_block);
   free(my_superblock);
-  strcpy(*name,ret_name); 
+  strcpy(*name,ret_name);
   *offset = *ret_offset;
   /*failure*/
   return 0;
@@ -112,17 +112,34 @@ int cfs_ls(int fd, off_t offset)
 
     
   
-    char* ret_name = (char *) my_block->data; //.
+    char* ret_name = (char *) my_block->data;
     printf("%s ", ret_name);
     // off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
     int i = 1;
     for (; i < pairs_in_block; i++)
+    /*if there is more than 1 blocks for data*/
+    while (my_block != 0)
     {
       ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size);
       printf("%s ", ret_name);
       // ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
       // printf("%s\n", ret_offset);
     } 
+      // off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+      int i = 1;
+      for (; i < pairs_in_block; i++)
+      {
+        ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size);
+        printf("%s ", ret_name);
+        // ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+        // printf("%s\n", ret_offset);
+      }
+
+      /*get next block*/
+      Block* temp_block = my_block;
+      my_block = get_Block(fd, my_superblock->block_size, my_block->next_block);
+      free(temp_block);
+    }
   }
 
   printf("\n");
