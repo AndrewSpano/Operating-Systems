@@ -87,7 +87,7 @@ int cfs_ls(int fd, off_t offset)
 
   char* ret_name = (char *) my_block->data; //.
   // printf("first name: %s\n", ret_name);
-  // off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+  off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
   // printf("offset for name: %lu\n", *ret_offset);
   ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size); //..
   // ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
@@ -97,12 +97,24 @@ int cfs_ls(int fd, off_t offset)
   for (; i < pairs_in_block; i++)
   {
     ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size);
-    printf("%s ", ret_name);
-    // ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+    ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+    if (get_type(fd, *ret_offset) == 1)
+    {
+      // [0;32m Green
+      // [1;34m Bold Blue
+
+      /* set print colour to Bold Blue */
+      printf("\033[1;34m");
+
+    }
     // printf("%s\n", ret_offset);
 
+    printf("%s ", ret_name);
+    /* set print colour back to normal */
+    printf("\033[0m");
   }
 
+  printf("telos prwtou block\n");
 
   /*if there is more than 1 blocks for data*/  
   while (my_block->next_block != 0)
@@ -111,35 +123,39 @@ int cfs_ls(int fd, off_t offset)
     my_block = get_Block(fd, my_superblock->block_size, my_block->next_block);
     free(temp_block);
 
-    
-  
-    char* ret_name = (char *) my_block->data; //.
+    /*first entity*/
+    char* ret_name = (char *) my_block->data; 
+    off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+    if (get_type(fd, *ret_offset) == 1)
+    {
+      // [0;32m Green
+      // [1;34m Bold Blue
+      /* set print colour to Bold Blue */
+      printf("\033[1;34m");
+    }
+    printf("kalispera prwti defterou block-> ");
     printf("%s ", ret_name);
-    // off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+    /* set print colour back to normal */
+    printf("\033[0m");
+
+    /*entities 2 and above*/
+    size_t pairs_in_block = my_block->bytes_used / size_of_pair;
     int i = 1;
     for (; i < pairs_in_block; i++)
-    /*if there is more than 1 blocks for data*/
-    while (my_block != 0)
     {
       ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size);
-      printf("%s ", ret_name);
-      // ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
-      // printf("%s\n", ret_offset);
-    // } 
-      // off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
-      int i = 1;
-      for (; i < pairs_in_block; i++)
+      ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+      if (get_type(fd, *ret_offset) == 1)
       {
-        ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size);
-        printf("%s ", ret_name);
-        // ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
-        // printf("%s\n", ret_offset);
+        // [0;32m Green
+        // [1;34m Bold Blue
+        /* set print colour to Bold Blue */
+        printf("\033[1;34m");
       }
+      printf("%s ", ret_name);
+      /* set print colour back to normal */
+      printf("\033[0m");
 
-      /*get next block*/
-      Block* temp_block = my_block;
-      my_block = get_Block(fd, my_superblock->block_size, my_block->next_block);
-      free(temp_block);
     }
   }
 
