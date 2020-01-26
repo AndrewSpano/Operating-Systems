@@ -435,7 +435,7 @@ int main(int argc, char* argv[])
           break;
         }
 
-        int retval = cfs_cd(fd, my_superblock, copy_list, path);
+        int retval = cfs_cd(fd, my_superblock, copy_list, path, 1, NULL);
         /* check if the operation failed */
         if (retval == 0)
         {

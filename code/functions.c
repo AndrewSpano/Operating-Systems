@@ -3,6 +3,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <assert.h>
 #include <errno.h>
 
 #include "functions.h"
@@ -467,7 +468,10 @@ int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
 
 
 
-int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[])
+/* if last_must_exist == 1, it means that we have given a path which contains only directories, and we want to go to the last directory.
+   if last_must_exist == 0, then it means that the last entity will be created, therefore it does not exist, so we must go the previous
+  directory, store the name of the entity to be created and return */
+int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[], int last_must_exist, char* last_entity_name)
 {
   /* this should never print */
   if (is_Empty(list))
@@ -535,6 +539,20 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
       }
     }
 
+    /* while the character '/' is being read, ignore it */
+    int temp_index = path_index;
+    while (path[temp_index] == '/')
+    {
+      temp_index++;
+    }
+
+    /* if the string ends, mark the process as finished and check the last entity */
+    if ((path[temp_index] == 0) || (path[temp_index] == '\n') || (path[temp_index] == '\t'))
+    {
+      is_finished = 1;
+    }
+
+
     if (!strcmp(temp_directory, ".."))
     {
       if (!is_in_Root(list))
@@ -575,10 +593,18 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
       }
 
 
-
+      /* get the offset of the requested directory. if the directory does not exist then the offset returned will be -1 */
       off_t directory_offset = directory_get_offset(fd, current_directory, block_size, fns, temp_directory);
       if (directory_offset == (off_t) -1)
       {
+        if (!last_must_exist && is_finished)
+        {
+          /* copy the name of the last entity (either a directory by cfs_mkdir or a file by cfs_touch) */
+          assert(last_entity_name != NULL);
+          strcpy(last_entity_name, temp_directory);
+          free(current_directory);
+          break;
+        }
         char wrong_directory[MAX_BUFFER_SIZE] = {0};
         memcpy(wrong_directory, path, path_index + 1);
 
@@ -596,6 +622,16 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
       }
       free(current_directory);
 
+
+      if (is_finished && !last_must_exist)
+      {
+        char wrong_directory[MAX_BUFFER_SIZE] = {0};
+        memcpy(wrong_directory, path, path_index + 1);
+
+        printf("Error: entity with name %s already exists.\n", wrong_directory);
+        free(temp_directory);
+        return -1;
+      }
 
       char* address_for_list = malloc((strlen(temp_directory) + 1) * sizeof(char));
       if (address_for_list == NULL)
