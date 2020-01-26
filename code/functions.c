@@ -467,7 +467,7 @@ int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
 
 
 
-int cfs_cd(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list, const char path[])
+int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[])
 {
   /* this should never print */
   if (is_Empty(list))
