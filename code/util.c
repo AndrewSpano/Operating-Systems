@@ -240,6 +240,51 @@ int path_is_absolute(const char path[])
 }
 
 
+/* removes and places the last name of a path to the destination string */
+int extract_last_entity_from_path(char path[], char* destination_string)
+{
+  int len = strlen(path);
+  int i = len - 1;
+
+  /* clear the useless "/" */
+  while (i >= 0 && path[i] == '/')
+  {
+    path[i] = 0;
+    i--;
+  }
+
+  /* if we reach the beggining of the path, then something like "/" or "///"
+     was given, which means we should go to the root directory */
+  if (i < 0)
+  {
+    strcpy(destination_string, "/");
+    return 1;
+  }
+
+  char reversed_string[MAX_BUFFER_SIZE] = {0};
+  int k = 0;
+
+  /* get the string inside an array, reversed */
+  while (i >= 0 && path[i] != '/')
+  {
+    reversed_string[k++] = path[i--];
+    path[i + 1] = 0;
+  }
+
+  i = 0;
+  k--;
+  while (k >= 0)
+  {
+    destination_string[i++] = reversed_string[k--];
+  }
+
+
+  return 1;
+}
+
+
+
+
 /* --------------------------------       GET FUNCTION PARAMETERS           ----------------------------------- */
 
 
@@ -363,7 +408,7 @@ int get_cfs_cp_parameters(const char buffer[], int* flag_R, int* flag_i, int* fl
 
 
 /* pretty much self_explanatory */
-int get_cfs_md_parameters(const char buffer[], int* flag_i)
+int get_cfs_mv_parameters(const char buffer[], int* flag_i)
 {
   char str[MAX_BUFFER_SIZE] = {0};
   char flags[2] = {0};
