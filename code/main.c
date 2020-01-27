@@ -459,7 +459,7 @@ int main(int argc, char* argv[])
         Stack_List_Peek(list, &cur_name, &cur_offset);
 
         cfs_ls(fd, cur_offset);
-
+        free(cur_name);
         break;
       }
 
