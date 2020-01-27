@@ -257,7 +257,7 @@ int get_cfs_touch_parameters(const char buffer[], int* flag_a, int* flag_m)
     int exists = contains_unknown_flag(str, flags);
     if (exists)
     {
-      printf("The parameter '%c' given in the option %s does not exist. Available options are -a and -m\n", str[exists], str);
+      printf("The parameter '%c' given in the option %s does not exist. Available options are -a and -m.\n", str[exists], str);
       return 0;
     }
 
@@ -326,6 +326,72 @@ int get_cfs_ls_parameters(const char buffer[], int* flag_a, int* flag_r, int* fl
 
 
 /* pretty much self_explanatory */
+int get_cfs_cp_parameters(const char buffer[], int* flag_R, int* flag_i, int* flag_r)
+{
+  char str[MAX_BUFFER_SIZE] = {0};
+  char flags[4] = {0};
+  strcpy(flags, "Rir");
+
+  int index = 2;
+  while (get_nth_string(str, buffer, index) && is_parameter(str))
+  {
+    int exists = contains_unknown_flag(str, flags);
+    if (exists)
+    {
+      printf("The parameter '%c' given in the option %s does not exist. Available options are -R, -i and -r.\n", str[exists], str);
+      return 0;
+    }
+
+    if (char_exists_in_string(str, 'R'))
+    {
+      *flag_R = 1;
+    }
+    if (char_exists_in_string(str, 'i'))
+    {
+      *flag_i = 1;
+    }
+    if (char_exists_in_string(str, 'r'))
+    {
+      *flag_r = 1;
+    }
+
+    index++;
+  }
+
+  return 1;
+}
+
+
+/* pretty much self_explanatory */
+int get_cfs_md_parameters(const char buffer[], int* flag_i)
+{
+  char str[MAX_BUFFER_SIZE] = {0};
+  char flags[2] = {0};
+  strcpy(flags, "i");
+
+  int index = 2;
+  while (get_nth_string(str, buffer, index) && is_parameter(str))
+  {
+    int exists = contains_unknown_flag(str, flags);
+    if (exists)
+    {
+      printf("The parameter '%c' given in the option %s does not exist. Only availabe option is -i.\n", str[exists], str);
+      return 0;
+    }
+
+    if (char_exists_in_string(str, 'i'))
+    {
+      *flag_i = 1;
+    }
+
+    index++;
+  }
+
+  return 1;
+}
+
+
+/* pretty much self_explanatory */
 int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_R)
 {
   char str[MAX_BUFFER_SIZE] = {0};
@@ -355,6 +421,7 @@ int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_R)
 
   return 1;
 }
+
 
 /* pretty much self_explanatory */
 int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size_t* cfs, uint* mdfn, char* cfs_filename)
