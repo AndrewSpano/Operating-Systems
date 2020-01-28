@@ -242,7 +242,7 @@ int cfs_workwith(char* cfs_filename, superblock** my_superblock, hole_map** hole
 
 
 
-int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list, MDS* current_directory, off_t parent_offset, char* insert_name)
+int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, MDS* current_directory, off_t parent_offset, char* insert_name)
 {
   size_t block_size = my_superblock->block_size;
   size_t fns = my_superblock->filename_size;
@@ -343,7 +343,7 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, Stack_List* li
 
 
 
-int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list, MDS* current_directory, off_t parent_offset, char* insert_name, off_t file_offset, int flag_a, int flag_m)
+int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, MDS* current_directory, off_t parent_offset, char* insert_name, off_t file_offset, int flag_a, int flag_m)
 {
 
   /* first check if any flag is true, in order to perform its operation */

@@ -230,7 +230,7 @@ int main(int argc, char* argv[])
 
           /* if we reach here it means that we can create a new directory inside
              the current one */
-          retval = cfs_mkdir(fd, my_superblock, holes, list, current_directory, current_directory_offset, new_directory_name);
+          retval = cfs_mkdir(fd, my_superblock, holes, current_directory, current_directory_offset, new_directory_name);
           if (!retval)
           {
             printf("Unexpected error occured in cfs_mkdir(). Exiting..\n");
@@ -373,7 +373,7 @@ int main(int argc, char* argv[])
           }
 
           /* if we reach here it means that we can create/modify a file inside the current directory */
-          retval = cfs_touch(fd, my_superblock, holes, list, current_directory, current_directory_offset, new_file_name, file_offset, flag_a, flag_m);
+          retval = cfs_touch(fd, my_superblock, holes, current_directory, current_directory_offset, new_file_name, file_offset, flag_a, flag_m);
           if (!retval)
           {
             printf("Unexpected error occured in cfs_touch(). Exiting..\n");
@@ -481,6 +481,7 @@ int main(int argc, char* argv[])
           index++;
         }
 
+        /* check for errors */
         if (index == 2)
         {
           printf("Error input: you must give at least one source file.\n");
@@ -539,8 +540,73 @@ int main(int argc, char* argv[])
         }
 
 
+        /* get the offset of the current directory, in order to get the directory */
+        off_t destination_directory_offset = Stack_List_Peek_offset(destination_path_list);
+        if (destination_directory_offset == (off_t) 0)
+        {
+          Stack_List_Destroy(&destination_path_list);
+          printf("Error in Stack_List_Peek_offset() when called from main:: cfs_cat.\n");
+          break;
+        }
 
 
+        /* get the current directory */
+        MDS* destination_file_directory = get_MDS(fd, destination_directory_offset);
+        if (destination_file_directory == NULL)
+        {
+          Stack_List_Destroy(&destination_path_list);
+          break;
+        }
+
+
+        /* check if the file already exists in the directory we want to place it */
+        off_t destination_file_offset = directory_get_offset(fd, destination_file_directory, block_size, fns, destination_file_name);
+        if (destination_file_offset == 0)
+        {
+          free(destination_file_directory);
+          Stack_List_Destroy(&destination_path_list);
+          break;
+        }
+        else if (destination_file_offset != (off_t) -1)
+        {
+          printf("Error input: a file with the same name as the output file already exists in the %s directory.\n", destination_file_path);
+          free(destination_file_directory);
+          Stack_List_Destroy(&destination_path_list);
+          break;
+        }
+
+        /* create the output file, in order to concatenate to it the source files */
+        int retval = cfs_touch(fd, my_superblock, holes, destination_file_directory, destination_directory_offset, destination_file_name, -1, 0, 0);
+        if (!retval)
+        {
+          printf("Unexpected error occured in cfs_cat(). Exiting..\n");
+          free(destination_file_directory);
+          Stack_List_Destroy(&destination_path_list);
+          FREE_AND_CLOSE(my_superblock, holes, list, fd);
+
+          return EXIT_FAILURE;
+        }
+
+
+        /* now actually get the offset of the destination file inside its directory */
+        destination_file_offset = directory_get_offset(fd, destination_file_directory, block_size, fns, destination_file_name);
+        if (destination_file_offset == 0)
+        {
+          free(destination_file_directory);
+          Stack_List_Destroy(&destination_path_list);
+          break;
+        }
+
+        /* we do not need the MDS of the directory anymore */
+        free(destination_file_directory);
+
+        /* get the file to change its attributes */
+        MDS* destination_file = get_MDS(fd, destination_file_offset);
+        if (destination_file_directory == NULL)
+        {
+          Stack_List_Destroy(&destination_path_list);
+          break;
+        }
 
 
         int i = 0;
