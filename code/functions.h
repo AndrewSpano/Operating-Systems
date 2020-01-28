@@ -12,6 +12,7 @@ int cfs_workwith(char* cfs_filename, superblock** my_superblock, hole_map** hole
 int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, MDS* current_directory, off_t parent_offset, char* insert_name);
 int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, MDS* current_directory, off_t parent_offset, char* insert_name, off_t file_offset, int flag_a, int flag_m);
 int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[]);
+int cfs_cat(int fd, superblock* my_superblock, MDS* destination_file, MDS* source_file);
 
 int cfs_read(char* cfs_filename, int fd);
 

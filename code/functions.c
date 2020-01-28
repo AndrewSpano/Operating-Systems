@@ -585,7 +585,7 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
         printf("Error: directory %s does not exist.\n", wrong_directory);
         free(current_directory);
         free(temp_directory);
-        return 0;
+        return -1;
       }
       else if (directory_offset == (off_t) 0)
       {
@@ -619,6 +619,12 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
 
   free(temp_directory);
   return 1;
+}
+
+
+int cfs_cat(int fd, superblock* my_superblock, MDS* destination_file, MDS* source_file)
+{
+
 }
 
 

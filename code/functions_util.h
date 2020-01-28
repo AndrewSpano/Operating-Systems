@@ -2,6 +2,7 @@
 #define __FUNCTIONS_UTIL__
 
 #include "structs.h"
+#include "list.h"
 
 
 void insert_pair_into_block(Block* block, char* insert_name, off_t insert_offset, size_t fns);
@@ -18,5 +19,7 @@ int shift_holes_to_the_right(hole_map* holes, uint hole_position);
 
 uint number_of_sub_entities_in_directory(MDS* current_directory, size_t fns);
 off_t directory_get_offset(int fd, MDS* directory, size_t block_size, size_t fns, char* target_name);
+
+off_t get_offset_from_path(int fd, superblock* my_superblock, Stack_List* list, char original_path[]);
 
 #endif

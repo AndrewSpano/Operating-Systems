@@ -611,10 +611,69 @@ int main(int argc, char* argv[])
 
         int i = 0;
         size_t destination_file_size = 0;
+        for (; i < total_sources; i++)
+        {
+          /* get the path of the file */
+          get_nth_string(read_input, buffer, i + 2);
+
+          off_t source_file_offset = get_offset_from_path(fd, my_superblock, list, read_input);
+          if (source_file_offset == (off_t) 0)
+          {
+            continue;
+          }
+
+          MDS* source_file = get_MDS(fd, source_file_offset);
+          if (source_file == 0)
+          {
+            continue;
+          }
+          else if (source_file->type != FILE)
+          {
+            char last_entity_name[MAX_BUFFER_SIZE] = {0};
+            extract_last_entity_from_path(read_input, last_entity_name);
+            printf("Error input: entity named %s is not a file.\n", last_entity_name);
+            free(source_file);
+
+            continue;
+          }
+          else if (destination_file_size + source_file->size > max_entity_size)
+          {
+            char last_entity_name[MAX_BUFFER_SIZE] = {0};
+            extract_last_entity_from_path(read_input, last_entity_name);
+            printf("Error input: entity named %s can't be concatenated to file %s because if would exceed max capacity of file.\n", last_entity_name, destination_file_name);
+            free(source_file);
+
+            continue;
+          }
+
+          if (source_file->size > 0)
+          {
+            cfs_cat(fd, my_superblock, destination_file, source_file);
+          }
+
+          destination_file_size += source_file->size;
+          free(source_file);
+          memset(read_input, 0, MAX_BUFFER_SIZE);
+        }
+
+
+        /* update the superblock */
+        my_superblock->current_size += sizeof(MDS) + destination_file->size;
+        retval = set_superblock(my_superblock, fd);
+        if (!retval)
+        {
+          free(destination_file);
+          Stack_List_Destroy(&destination_path_list);
+          FREE_AND_CLOSE(my_superblock, holes, list, fd);
+
+          return EXIT_FAILURE;
+        }
 
 
 
-
+        /* free up the used space */
+        free(destination_file);
+        Stack_List_Destroy(&destination_path_list);
 
         break;
       }

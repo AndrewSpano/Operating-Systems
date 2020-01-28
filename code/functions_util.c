@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "functions_util.h"
+#include "functions.h"
 #include "util.h"
 
 
@@ -387,4 +388,87 @@ off_t directory_get_offset(int fd, MDS* directory, size_t block_size, size_t fns
 
   /* return 0 if no same name is found after scanning all the directory blocks */
   return (off_t) -1;
+}
+
+
+
+
+
+/* return the offset of the last entity from a given path */
+off_t get_offset_from_path(int fd, superblock* my_superblock, Stack_List* list, char original_path[])
+{
+  size_t block_size = my_superblock->block_size;
+  size_t fns = my_superblock->filename_size;
+
+  char path[MAX_BUFFER_SIZE] = {0};
+  strcpy(path, original_path);
+
+  char last_entity_name[MAX_BUFFER_SIZE] = {0};
+  extract_last_entity_from_path(path, last_entity_name);
+
+  Stack_List* file_path_list = copy_List(list);
+
+  if (file_path_list == NULL)
+  {
+    return (off_t) 0;
+  }
+
+  /* check if we are to stay in the current directory. if not, go */
+  if (path[0] != 0)
+  {
+    int retval = cfs_cd(fd, my_superblock, file_path_list, path);
+    /* check if the operation failed */
+    if (retval == 0)
+    {
+      Stack_List_Destroy(&file_path_list);
+      return (off_t) 0;
+    }
+    else if (retval == -1)
+    {
+      return (off_t) 0;
+    }
+  }
+
+  /* get the offset of the current directory, in order to get the directory */
+  off_t destination_directory_offset = Stack_List_Peek_offset(file_path_list);
+  if (destination_directory_offset == (off_t) 0)
+  {
+    Stack_List_Destroy(&file_path_list);
+    printf("Error in Stack_List_Peek_offset() when called from functions_util().\n");
+    return (off_t) 0;
+  }
+
+
+  /* get the current directory */
+  MDS* destination_file_directory = get_MDS(fd, destination_directory_offset);
+  if (destination_file_directory == NULL)
+  {
+    Stack_List_Destroy(&file_path_list);
+    return (off_t) 0;
+  }
+
+
+  /* check if the file does not exist in the directory we want to place it */
+  off_t destination_file_offset = directory_get_offset(fd, destination_file_directory, block_size, fns, last_entity_name);
+  if (destination_file_offset == 0)
+  {
+    free(destination_file_directory);
+    Stack_List_Destroy(&file_path_list);
+    return (off_t) 0;
+  }
+  else if (destination_file_offset == (off_t) -1)
+  {
+    printf("Error input: the file %s does not exist in the directory %s.\n", last_entity_name, path);
+    free(destination_file_directory);
+    Stack_List_Destroy(&file_path_list);
+    return (off_t) 0;
+  }
+
+
+  /* free the dynamic structures and variables used */
+  free(destination_file_directory);
+  Stack_List_Destroy(&file_path_list);
+
+
+  return destination_file_offset;
 }
