@@ -289,7 +289,10 @@ int Stack_List_Print_Directories(Stack_List* list, int n)
   /* set print colour to Bold Blue */
   printf("\033[1;34m");
 
-  printf("~");
+  if (list->size > number_of_prints)
+  {
+    printf("~");
+  }
 
   while (number_of_prints > 0)
   {
