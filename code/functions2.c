@@ -74,6 +74,9 @@ int get_type(int fd, off_t offset)
 
 int cfs_ls(int fd, off_t offset)
 {
+
+  // int get_cfs_ls_parameters(const char buffer[], int* flag_a, int* flag_r, int* flag_l, int* flag_u, int* flag_d, int* flag_h)
+
   superblock* my_superblock = get_superblock(fd);
   MDS* my_mds = get_MDS(fd, offset);
   Block* my_block = get_Block(fd, my_superblock->block_size, my_mds->first_block);
@@ -114,7 +117,7 @@ int cfs_ls(int fd, off_t offset)
     printf("\033[0m");
   }
 
-  printf("telos prwtou block\n");
+  // printf("telos prwtou block\n");
 
   /*if there is more than 1 blocks for data*/  
   while (my_block->next_block != 0)
@@ -133,7 +136,7 @@ int cfs_ls(int fd, off_t offset)
       /* set print colour to Bold Blue */
       printf("\033[1;34m");
     }
-    printf("kalispera prwti defterou block-> ");
+    // printf("kalispera prwti defterou block-> ");
     printf("%s ", ret_name);
     /* set print colour back to normal */
     printf("\033[0m");
