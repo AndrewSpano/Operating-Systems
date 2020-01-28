@@ -33,6 +33,7 @@ int is_in_Root(Stack_List* list);
 int Stack_List_Push(Stack_List* list, char* name, off_t offset);
 int Stack_List_Pop(Stack_List* list);
 int Stack_List_Peek(Stack_List* list, char** name, off_t* offset);
+off_t Stack_List_Peek_offset(Stack_List* list);
 int Stack_List_Print(Stack_List* list);
 int Stack_List_Print_Path(Stack_List* list);
 int Stack_List_Print_Directories(Stack_List* list, int n);

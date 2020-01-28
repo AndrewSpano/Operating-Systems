@@ -465,12 +465,90 @@ int main(int argc, char* argv[])
 
       case 7:
       {
-        
+
         break;
       }
 
       case 8:
       {
+        /* array used to read strings from the user input */
+        char read_input[MAX_BUFFER_SIZE] = {0};
+
+        int index = 2;
+        /* count and skip the source files */
+        while (get_nth_string(read_input, buffer, index) && strcmp(read_input, "-o"))
+        {
+          index++;
+        }
+
+        if (index == 2)
+        {
+          printf("Error input: you must give at least one source file.\n");
+          break;
+        }
+        if (!strcmp(read_input, "-o"))
+        {
+          printf("Error input: you must give the flag \"-o\" to mark the destination file.\n");
+          break;
+        }
+
+        /* how many source files are being added up */
+        int total_sources = index - 2;
+
+        /* array used to store the name of the output file */
+        char destination_file_path[MAX_BUFFER_SIZE] = {0};
+        index++;
+
+        /* make sure that a destination is given */
+        if (!get_nth_string(destination_file_path, buffer, index))
+        {
+          printf("Error input: you must give a destination file.\n");
+          break;
+        }
+
+        /* make sure that no more than 1 destinations are given */
+        if (get_nth_string(read_input, buffer, index + 1))
+        {
+          printf("Error input: only 1 destination file can be given.\n");
+          break;
+        }
+
+
+        /* extract the name of the destination path, and check if a file with
+           the same name already exists */
+        char destination_file_name[MAX_BUFFER_SIZE] = {0};
+        extract_last_entity_from_path(destination_file_path, destination_file_name);
+
+        Stack_List* destination_path_list = copy_List(list);
+        if (destination_path_list == NULL)
+        {
+          break;
+        }
+
+        /* check if the output file is to be placed in another directory. If so,
+           then build the list to point at that directory */
+        if (destination_file_path[0] != 0)
+        {
+          int retval = cfs_cd(fd, my_superblock, destination_path_list, destination_file_path);
+          /* check if the operation failed */
+          if (retval == 0)
+          {
+            Stack_List_Destroy(&destination_path_list);
+            break;
+          }
+        }
+
+
+
+
+
+
+        int i = 0;
+        size_t destination_file_size = 0;
+
+
+
+
 
         break;
       }

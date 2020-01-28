@@ -223,6 +223,18 @@ int Stack_List_Peek(Stack_List* list, char** name, off_t* offset)
 
 
 
+off_t Stack_List_Peek_offset(Stack_List* list)
+{
+  if (is_Empty(list))
+  {
+    return (off_t) 0;
+  }
+
+  return list->tail->offset;
+}
+
+
+
 int Stack_List_Print(Stack_List* list)
 {
   if (is_Empty(list))
