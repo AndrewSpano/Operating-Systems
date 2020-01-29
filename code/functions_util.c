@@ -458,7 +458,14 @@ off_t get_offset_from_path(int fd, superblock* my_superblock, Stack_List* list, 
   }
   else if (destination_file_offset == (off_t) -1)
   {
-    printf("Error input: the file %s does not exist in the directory %s.\n", last_entity_name, path);
+    if (path[0] != 0)
+    {
+      printf("Error input: the file \"%s\" does not exist in the directory %s.\n", last_entity_name, path);
+    }
+    else
+    {
+      printf("Error input: the file \"%s\" does not exist in the current directory.\n", last_entity_name);
+    }
     free(destination_file_directory);
     Stack_List_Destroy(&file_path_list);
     return (off_t) 0;

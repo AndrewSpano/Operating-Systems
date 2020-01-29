@@ -283,7 +283,7 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, MDS* current_d
   Block* data_block = NULL;
   MALLOC_OR_DIE_3(data_block, block_size);
   /* initialize the new directory data block */
-  initialize_Directory_Data_Block(data_block, fns, block_position, parent_offset);
+  initialize_Directory_Data_Block(data_block, fns, mds_position, parent_offset);
 
   /* write the block in the cfs file */
   retval = set_Block(data_block, fd, block_size, block_position);

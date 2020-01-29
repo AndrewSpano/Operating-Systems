@@ -475,10 +475,12 @@ int main(int argc, char* argv[])
         char read_input[MAX_BUFFER_SIZE] = {0};
 
         int index = 2;
+        int exists = get_nth_string(read_input, buffer, index);
         /* count and skip the source files */
-        while (get_nth_string(read_input, buffer, index) && strcmp(read_input, "-o"))
+        while (exists && strcmp(read_input, "-o"))
         {
           index++;
+          exists = get_nth_string(read_input, buffer, index);
         }
 
         /* check for errors */
@@ -487,7 +489,7 @@ int main(int argc, char* argv[])
           printf("Error input: you must give at least one source file.\n");
           break;
         }
-        if (!strcmp(read_input, "-o"))
+        if (!exists)
         {
           printf("Error input: you must give the flag \"-o\" to mark the destination file.\n");
           break;
@@ -569,7 +571,14 @@ int main(int argc, char* argv[])
         }
         else if (destination_file_offset != (off_t) -1)
         {
-          printf("Error input: a file with the same name as the output file already exists in the %s directory.\n", destination_file_path);
+          if (destination_file_path[0] == 0)
+          {
+            printf("Error input: a file with the same name as the output file already exists in the current directory.\n");
+          }
+          else
+          {
+            printf("Error input: a file with the same name as the output file already exists in the %s directory.\n", destination_file_path);
+          }
           free(destination_file_directory);
           Stack_List_Destroy(&destination_path_list);
           break;
