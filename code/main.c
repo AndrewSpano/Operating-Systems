@@ -663,6 +663,7 @@ int main(int argc, char* argv[])
 
         int i = 0;
         size_t destination_file_size = 0;
+        /* iterate to concatenate all the files */
         for (; i < total_sources; i++)
         {
           /* get the path of the file */
@@ -704,7 +705,16 @@ int main(int argc, char* argv[])
           /* if source file is not empty, concatenate */
           if (source_file->size > 0)
           {
-            cfs_cat(fd, my_superblock, holes, destination_file, destination_file_offset, source_file);
+            retval = cfs_cat(fd, my_superblock, holes, destination_file, destination_file_offset, source_file);
+            if (!retval)
+            {
+              free(source_file);
+              free(destination_file);
+              Stack_List_Destroy(&destination_path_list);
+              FREE_AND_CLOSE(my_superblock, holes, list, fd);
+
+              return EXIT_FAILURE;
+            }
           }
 
           /* increment size */
