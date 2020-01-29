@@ -631,6 +631,14 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
 
 
 
+int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char* source_name, MDS* destination_directory, int flag_R, int flag_i, int flag_r)
+{
+  
+
+  return 1;
+}
+
+
 
 int cfs_cat(int fd, superblock* my_superblock, hole_map* holes, MDS* destination_file, off_t destination_file_offset, MDS* source_file)
 {

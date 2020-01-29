@@ -494,7 +494,180 @@ int main(int argc, char* argv[])
 
       case 7:
       {
-        
+        BREAK_IF_NO_FILE_OPEN(fd);
+
+        /* get the parameters */
+        int flag_R = 0;
+        int flag_i = 0;
+        int flag_r = 0;
+        int valid_parameters = get_cfs_cp_parameters(buffer, &flag_R, &flag_i, &flag_r);
+        /* check for errors */
+        if (!valid_parameters)
+        {
+          break;
+        }
+        else if (flag_R && flag_r)
+        {
+          printf("Error: parameters -r and -R cannot be given at the same time.");
+          break;
+        }
+
+        /* array of characters used to read the user input */
+        char read_input[MAX_BUFFER_SIZE] = {0};
+
+
+        /* skip the parameter (options) strings */
+        int index = 2;
+        int exists = get_nth_string(read_input, buffer, index);
+        while (exists && is_parameter(read_input))
+        {
+          index++;
+          exists = get_nth_string(read_input, buffer, index);
+        }
+
+        if (!exists)
+        {
+          printf("Error input: missing file operads.\n");
+          break;
+        }
+
+
+        int start_of_sources = index;
+        /* iterate to find the destination folder */
+        while (exists)
+        {
+          index++;
+          exists = get_nth_string(read_input, buffer, index);
+        }
+
+        /* check for errors */
+        if (index == start_of_sources + 1)
+        {
+          printf("Error input: you must give at least 2 files; 1 source and 1 destination.\n");
+          break;
+        }
+
+        /* counter used later */
+        int total_sources = index - start_of_sources + 1;
+
+        /* information about the destination file */
+        char destination_directory_path[MAX_BUFFER_SIZE] = {0};
+        get_nth_string(destination_directory_path, buffer, index - 1);
+
+
+        /* get the offset of the destination directory */
+        off_t destination_directory_offset = get_offset_from_path(fd, my_superblock, list, read_input);
+        if (destination_directory_offset == (off_t) 0)
+        {
+          break;
+        }
+
+
+        /* get the destination file */
+        MDS* destination_directory = get_MDS(fd, destination_directory_offset);
+        if (destination_directory == NULL)
+        {
+          break;
+        }
+        else if (destination_directory->type != DIRECTORY)
+        {
+          printf("Error input: destination must be a directory.\n");
+          free(destination_directory);
+          break;
+        }
+        else if (number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
+        {
+          printf("Error: the directory \"%s\" has reached it's max number of files, therefore nothing can be copied in it.\n", read_input);
+          free(destination_directory);
+          break;
+        }
+
+
+
+        /* iterate through all the sources */
+        for (index = start_of_sources; index < start_of_sources + total_sources; index++)
+        {
+          /* get the path of the entity */
+          get_nth_string(read_input, buffer, index);
+
+          /* check for errors */
+          if (number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
+          {
+            printf("Error: entity \"%s\" and those after that can't be copied because the destination directory has reached its max limit in entities.\n", read_input);
+            break;
+          }
+
+          /* get the offset of the entity to be copied */
+          off_t entity_offset = get_offset_from_path(fd, my_superblock, list, read_input);
+          /* check for errors */
+          if (entity_offset == (off_t) 0)
+          {
+            continue;
+          }
+          else if (entity_offset == my_superblock->root_directory)
+          {
+            printf("Error input: /root directory is the only directory that can't be copied. Therefore the entity \"%s\" can't be copied.\n", read_input);
+            continue;
+          }
+
+
+          /* get the name of the entity in order to check if an entity with the
+             same name in the destination directory exists */
+          char last_entity_name[MAX_BUFFER_SIZE] = {0};
+          extract_last_entity_from_path(read_input, last_entity_name);
+
+
+          /* check for existance of entity with same name */
+          off_t check_if_exists = directory_get_offset(fd, destination_directory, block_size, fns, last_entity_name);
+          if (check_if_exists == (off_t) 0)
+          {
+            free(destination_directory);
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+
+            return EXIT_FAILURE;
+          }
+          else if (check_if_exists != (off_t) -1)
+          {
+            if (read_input[0] != 0)
+            {
+              printf("Error input: entity named \"%s\" already exists in directory \"%s\".\n", last_entity_name, read_input);
+            }
+            else
+            {
+              printf("Error input: entity named \"%s\" already exists in current directory.\n", last_entity_name);
+            }
+            continue;
+          }
+
+
+          /* get the entity */
+          MDS* entity = get_MDS(fd, entity_offset);
+          /* check for errors */
+          if (entity == 0)
+          {
+            continue;
+          }
+
+
+          int retval = cfs_cp(fd, my_superblock, holes, entity, last_entity_name, destination_directory, flag_R, flag_i, flag_r);
+          if (!retval)
+          {
+            free(entity);
+            free(destination_directory);
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+
+            return EXIT_FAILURE;
+          }
+
+
+          /* free the entity allocated */
+          free(entity);
+          /* reset the array used to read the user input */
+          memset(read_input, 0, MAX_BUFFER_SIZE);
+        }
+
+
+
         break;
       }
 
