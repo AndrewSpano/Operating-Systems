@@ -80,17 +80,12 @@ int print_characteristics(int fd, off_t offset)
     printf("Error get_MDS\n");
     return 0;
   }
-  printf("GIATI\n");
   struct tm *info;
-  printf("%lu\n", (my_mds->creation_time));
+  // printf("%lu\n", (my_mds->creation_time));
   info = localtime(&(my_mds->creation_time));
-  printf("ela re \n");
-  printf("creation time: %s", asctime(info));
-  printf("%p\n", info);
-  printf("%lu ", my_mds->size);
+  // printf("creation time: %s", asctime(info));
 
   printf("c:%d/%d/%d-%d:%d:%d ", info->tm_mday, info->tm_mon + 1, info->tm_year + 1900, info->tm_hour, info->tm_min, info->tm_sec);
-  printf("ksekola\n");
   // printf("last access time: %s", asctime(info));
   info = localtime(&(my_mds->access_time));
   printf("a:%d/%d/%d-%d:%d:%d ", info->tm_mday, info->tm_mon + 1, info->tm_year + 1900, info->tm_hour, info->tm_min, info->tm_sec);
@@ -105,7 +100,6 @@ int print_characteristics(int fd, off_t offset)
 
 int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u, int flag_d, int flag_h)
 {
-  printf("OFFSET %lu\n", offset);
   superblock* my_superblock = get_superblock(fd);
   MDS* my_mds = get_MDS(fd, offset);
   Block* my_block = get_Block(fd, my_superblock->block_size, my_mds->first_block);
@@ -121,12 +115,17 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
   off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
   if (flag_a)
   {
-    printf("wtf\n");
-    printf("=====================%lu\n", *ret_offset);
-    print_characteristics(fd, *ret_offset);
-    printf("\033[1;34m");
-    printf("%s \n", ret_name);
-    printf("WHAT\n");
+    if (flag_l)
+    {
+      print_characteristics(fd, *ret_offset);
+      printf("\033[1;34m");
+      printf("%s \n", ret_name);
+    }
+    else
+    {
+      printf("\033[1;34m");
+      printf("%s \n", ret_name);
+    }    
   }
   printf("\033[0m");
 
@@ -135,8 +134,17 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
   // ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
   if (flag_a)
   {
-    printf("\033[1;34m");
-    printf("%s \n", ret_name);
+    if (flag_l)
+    {
+      print_characteristics(fd, *ret_offset);
+      printf("\033[1;34m");
+      printf("%s \n", ret_name);
+    }
+    else
+    {
+      printf("\033[1;34m");
+      printf("%s \n", ret_name);
+    }    
   }
   printf("\033[0m");
 
@@ -145,23 +153,58 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
   {
     ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size);
     ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
-    if (get_type(fd, *ret_offset) == 1)
+    if (flag_d) //print only dirs
     {
-      // [0;32m Green
-      // [1;34m Bold Blue
-
-      /* set print colour to Bold Blue */
-      printf("\033[1;34m");
-
+      if (get_type(fd, *ret_offset) == 1)
+      {
+        if (flag_l)
+        {
+          print_characteristics(fd, *ret_offset);
+          printf("\033[1;34m");
+          printf("%s \n", ret_name);
+        }
+        else
+        {
+          printf("\033[1;34m");
+          printf("%s \n", ret_name);
+        }
+      }
+      // printf("%s\n", ret_offset);
+      printf("\033[0m");
     }
-    // printf("%s\n", ret_offset);
+    else
+    {
+      if (get_type(fd, *ret_offset) == 1) //directory
+      {
+        if (flag_l)
+        {
+          print_characteristics(fd, *ret_offset);
+          printf("\033[1;34m");
+          printf("%s \n", ret_name);
+        }
+        else
+        {
+          printf("\033[1;34m");
+          printf("%s \n", ret_name);
+        }
+        printf("\033[0m");
+      }
+      else //file
+      {
+        if (flag_l)
+        {
+          print_characteristics(fd, *ret_offset);
+          printf("%s \n", ret_name);
+        }
+        else
+        {
+          printf("%s \n", ret_name);
+        } 
+      }
+      // printf("%s\n", ret_offset);
+    }
 
-    printf("%s \n", ret_name);
-    /* set print colour back to normal */
-    printf("\033[0m");
   }
-
-  // printf("telos prwtou block\n");
 
   /*if there is more than 1 blocks for data*/  
   while (my_block->next_block != 0)
@@ -173,15 +216,56 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
     /*first entity*/
     char* ret_name = (char *) my_block->data; 
     off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
-    if (get_type(fd, *ret_offset) == 1)
+    if (flag_d) //print only dirs
     {
-      /* set print colour to Bold Blue */
-      printf("\033[1;34m");
+      if (get_type(fd, *ret_offset) == 1)
+      {
+        if (flag_l)
+        {
+          print_characteristics(fd, *ret_offset);
+          printf("\033[1;34m");
+          printf("%s \n", ret_name);
+        }
+        else
+        {
+          printf("\033[1;34m");
+          printf("%s \n", ret_name);
+        }
+      }
+      // printf("%s\n", ret_offset);
+      printf("\033[0m");
     }
-    // printf("kalispera prwti defterou block-> ");
-    printf("%s \n", ret_name);
-    /* set print colour back to normal */
-    printf("\033[0m");
+    else //print all
+    {
+      if (get_type(fd, *ret_offset) == 1) //directory
+      {
+        if (flag_l)
+        {
+          print_characteristics(fd, *ret_offset);
+          printf("\033[1;34m");
+          printf("%s \n", ret_name);
+        }
+        else
+        {
+          printf("\033[1;34m");
+          printf("%s \n", ret_name);
+        }
+        printf("\033[0m");
+      }
+      else //file
+      {
+        if (flag_l)
+        {
+          print_characteristics(fd, *ret_offset);
+          printf("%s \n", ret_name);
+        }
+        else
+        {
+          printf("%s \n", ret_name);
+        } 
+      }
+      // printf("%s\n", ret_offset);
+    }
 
     /*entities 2 and above*/
     size_t pairs_in_block = my_block->bytes_used / size_of_pair;
@@ -190,14 +274,56 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
     {
       ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size);
       ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
-      if (get_type(fd, *ret_offset) == 1)
+      if (flag_d) //print only dirs
       {
-        /* set print colour to Bold Blue */
-        printf("\033[1;34m");
+        if (get_type(fd, *ret_offset) == 1)
+        {
+          if (flag_l)
+          {
+            print_characteristics(fd, *ret_offset);
+            printf("\033[1;34m");
+            printf("%s \n", ret_name);
+          }
+          else
+          {
+            printf("\033[1;34m");
+            printf("%s \n", ret_name);
+          }
+        }
+        // printf("%s\n", ret_offset);
+        printf("\033[0m");
       }
-      printf("%s \n", ret_name);
-      /* set print colour back to normal */
-      printf("\033[0m");
+      else //print all
+      {
+        if (get_type(fd, *ret_offset) == 1) //directory
+        {
+          if (flag_l)
+          {
+            print_characteristics(fd, *ret_offset);
+            printf("\033[1;34m");
+            printf("%s \n", ret_name);
+          }
+          else
+          {
+            printf("\033[1;34m");
+            printf("%s \n", ret_name);
+          }
+          printf("\033[0m");
+        }
+        else //file
+        {
+          if (flag_l)
+          {
+            print_characteristics(fd, *ret_offset);
+            printf("%s \n", ret_name);
+          }
+          else
+          {
+            printf("%s \n", ret_name);
+          } 
+        }
+        // printf("%s\n", ret_offset);
+      }
 
     }
   }

@@ -454,6 +454,7 @@ int main(int argc, char* argv[])
 
       case 6:
       {
+        BREAK_IF_NO_FILE_OPEN(fd);
         int flag_a = 0;
         int flag_r = 0;
         int flag_l = 0;
@@ -463,7 +464,7 @@ int main(int argc, char* argv[])
         int valid_parameters = get_cfs_ls_parameters(buffer, &flag_a, &flag_r, &flag_l, &flag_u, &flag_d, &flag_h);
         if (!valid_parameters)
         {
-          printf("Error: not valid parameters.");
+          printf("Error: not valid parameters.\n");
           break;
         }
         else if (flag_d && flag_h)
@@ -485,7 +486,6 @@ int main(int argc, char* argv[])
         char* cur_name = malloc(MAX_CFS_FILENAME_SIZE * sizeof(char));
         off_t cur_offset;
         Stack_List_Peek(list, &cur_name, &cur_offset);
-        Stack_List_Print(list);
         cfs_ls(fd, cur_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
         free(cur_name);
 
