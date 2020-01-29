@@ -752,9 +752,9 @@ int cfs_cat(int fd, superblock* my_superblock, hole_map* holes, MDS* destination
     {
       int retval = set_Block(block, fd, block_size, block_position);
       free(source_block);
+      free(block);
       if (!retval)
       {
-        free(block);
         return 0;
       }
       break;
@@ -787,19 +787,28 @@ int cfs_cat(int fd, superblock* my_superblock, hole_map* holes, MDS* destination
     number_of_new_blocks_created++;
 
     /* update the new block */
-    block = new_block;
     size_t bytes_left_in_source = source_block->bytes_used - bytes_to_copy;
 
     /* concatenate */
-    memcpy(block->data, source_block->data + bytes_to_copy, bytes_left_in_source);
-    block->bytes_used += bytes_left_in_source;
+    memcpy(new_block->data, source_block->data + bytes_to_copy, bytes_left_in_source);
+    new_block->bytes_used += bytes_left_in_source;
 
     /* get next source block */
     source_block_position = source_block->next_block;
     free(source_block);
+    /* check if the concatenation has finished */
+    if (source_block_position == 0)
+    {
+      int retval = set_Block(new_block, fd, block_size, new_block_position);
+      free(new_block);
+      if (!retval)
+      {
+        return 0;
+      }
+      break;
+    }
   }
 
-  free(block);
 
   /* update the structs */
   destination_file->blocks_using += number_of_new_blocks_created;

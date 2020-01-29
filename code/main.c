@@ -581,10 +581,24 @@ int main(int argc, char* argv[])
         }
 
 
-        /* get the current directory */
+        /* get the directory in which the output file will be placed */
         MDS* destination_file_directory = get_MDS(fd, destination_directory_offset);
         if (destination_file_directory == NULL)
         {
+          Stack_List_Destroy(&destination_path_list);
+          break;
+        }
+        else if (number_of_sub_entities_in_directory(destination_file_directory, fns) == max_number_of_files)
+        {
+          if (destination_file_path[0] == 0)
+          {
+            printf("Error input: the current directory has reached it's max number of files, therefore the file \"%s\" can't be created\n", destination_file_name);
+          }
+          else
+          {
+            printf("Error input: the directory \"%s\" has reached it's max number of files, therefore the file \"%s\" can't be created\n", destination_file_path, destination_file_name);
+          }
+          free(destination_file_directory);
           Stack_List_Destroy(&destination_path_list);
           break;
         }
@@ -704,6 +718,7 @@ int main(int argc, char* argv[])
 
         /* update the superblock */
         my_superblock->current_size += sizeof(MDS) + block_size * destination_file->blocks_using;
+        my_superblock->total_entities++;
         retval = set_superblock(my_superblock, fd);
         if (!retval)
         {
