@@ -33,6 +33,7 @@ char* pointer_to_next_name(char* pointer, size_t fns);
 void initialize_superblock(superblock* my_superblock, char* cfs_filename, int fd, off_t root_directory_offset, size_t current_size, size_t bs, size_t fns, size_t cfs, uint mdfn);
 void initialize_holes(hole_map* holes, uint n, uint current_holes, off_t hole_start);
 void initialize_MDS(MDS* mds, uint id, uint type, uint number_of_hard_links, uint blocks_using, size_t size, off_t parent_offset, off_t first_block);
+void initialize_data_Block(Block* block, size_t block_size);
 void initialize_Directory_Data_Block(Block* block, size_t fns, off_t self_offset, off_t parent_offset);
 
 /* fast access functions */

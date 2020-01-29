@@ -285,7 +285,7 @@ off_t find_hole(hole_map* holes, size_t my_size)
   }
 
   /* if no hole is found, return 0 */
-  return 0;
+  return (off_t) 0;
 }
 
 

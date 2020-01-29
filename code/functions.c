@@ -622,9 +622,189 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
 }
 
 
-int cfs_cat(int fd, superblock* my_superblock, MDS* destination_file, MDS* source_file)
-{
 
+
+int cfs_cat(int fd, superblock* my_superblock, hole_map* holes, MDS* destination_file, off_t destination_file_offset, MDS* source_file)
+{
+  /* useful attributes */
+  size_t block_size = my_superblock->block_size;
+
+  /* how much data a block can contain */
+  size_t bytes_for_data = block_size - sizeof(Block);
+
+  /* counter used to update the different fields of the structs */
+  uint number_of_new_blocks_created = 0;
+
+
+  /* if this is the first time we write to this file */
+  if (destination_file->blocks_using == 0)
+  {
+    /* allocate and initialize the new block */
+    Block* new_block = NULL;
+    MALLOC_OR_DIE_3(new_block, block_size);
+
+    initialize_data_Block(new_block, block_size);
+
+    /* find a spot for the new block */
+    off_t block_position = find_hole(holes, block_size);
+
+    /* write the block in the cfs file */
+    int retval = set_Block(new_block, fd, block_size, block_position);
+    if (!retval)
+    {
+      printf("set_Block() error.\n");
+      free(new_block);
+      return 0;
+    }
+
+    /* update the destination file */
+    destination_file->first_block = block_position;
+
+    free(new_block);
+    number_of_new_blocks_created++;
+  }
+
+  /* get the position of the first block */
+  off_t block_position = destination_file->first_block;
+  Block* block = get_Block(fd, block_size, block_position);
+  DIE_IF_NULL(block);
+
+  /* go to the last block in order to concatenate */
+  while (block_position != 0)
+  {
+    block_position = block->next_block;
+    free(block);
+
+    block = get_Block(fd, block_size, block_position);
+    DIE_IF_NULL(block);
+  }
+
+
+  /* check if the current block is full */
+  if (block->bytes_used == bytes_for_data)
+  {
+    /* allocate and initialize the new block */
+    Block* new_block = malloc(block_size);
+    if (new_block == NULL)
+    {
+      free(block);
+      perror("malloc() error");
+
+      return 0;
+    }
+    new_block->next_block = 0;
+    new_block->bytes_used = 0;
+    memset(block->data, 0, bytes_for_data);
+
+    off_t previous_block_position = block_position;
+    block_position = find_hole(holes, block_size);
+    block->next_block = block_position;
+
+    /* update the block in the cfs file */
+    int retval = set_Block(block, fd, block_size, previous_block_position);
+    if (!retval)
+    {
+      printf("set_Block() error.\n");
+      free(block);
+      free(new_block);
+      return 0;
+    }
+
+    free(block);
+    block = new_block;
+  }
+
+  /* get the position of the first data block of the source file */
+  off_t source_block_position = source_file->first_block;
+
+  while (1 + 3 == 2 * 2)
+  {
+    /* get the block of the source file */
+    Block* source_block = get_Block(fd, block_size, source_block_position);
+    if (source_block == NULL)
+    {
+      free(block);
+      return 0;
+    }
+
+    /* determine the sizes of the concatenation */
+    size_t bytes_available_in_destination = bytes_for_data - block->bytes_used;
+    size_t bytes_to_copy = bytes_available_in_destination;
+    if (source_block->bytes_used < bytes_to_copy)
+    {
+      bytes_to_copy = source_block->bytes_used;
+    }
+
+    /* concatenate data */
+    memcpy(block->data + block->bytes_used, source_block->data, bytes_to_copy);
+    block->bytes_used += bytes_to_copy;
+
+    /* if the below condition is true, then the concatenation is over */
+    if (source_block->bytes_used <= bytes_to_copy && source_block->next_block == 0)
+    {
+      int retval = set_Block(block, fd, block_size, block_position);
+      free(source_block);
+      if (!retval)
+      {
+        free(block);
+        return 0;
+      }
+      break;
+
+    }
+
+    /* concatenation is not over, so allocate a new block and copy the
+       remainder of the source block */
+    Block* new_block = malloc(block_size);
+    if (new_block == NULL)
+    {
+      free(block);
+      free(source_block);
+      return 0;
+    }
+    initialize_data_Block(new_block, block_size);
+
+    /* find a spot for the new block */
+    off_t new_block_position = find_hole(holes, block_size);
+    block->next_block = new_block_position;
+
+    int retval = set_Block(block, fd, block_size, block_position);
+    free(block);
+    if (!retval)
+    {
+      free(new_block);
+      free(source_block);
+      return 0;
+    }
+    number_of_new_blocks_created++;
+
+    /* update the new block */
+    block = new_block;
+    size_t bytes_left_in_source = source_block->bytes_used - bytes_to_copy;
+
+    /* concatenate */
+    memcpy(block->data, source_block->data + bytes_to_copy, bytes_left_in_source);
+    block->bytes_used += bytes_left_in_source;
+
+    /* get next source block */
+    source_block_position = source_block->next_block;
+    free(source_block);
+  }
+
+  free(block);
+
+  /* update the structs */
+  destination_file->blocks_using += number_of_new_blocks_created;
+  destination_file->size += source_file->size;
+
+  /* set the updates */
+  int retval = set_MDS(destination_file, fd, destination_file_offset);
+  if (!retval)
+  {
+    return 0;
+  }
+
+  return 1;
 }
 
 

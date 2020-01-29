@@ -663,6 +663,16 @@ void initialize_MDS(MDS* mds, uint id, uint type, uint number_of_hard_links, uin
 
 
 
+void initialize_data_Block(Block* block, size_t block_size)
+{
+  block->next_block = 0;
+  block->bytes_used = 0;
+  size_t size_for_data = block_size - sizeof(Block);
+  memset(block->data, 0, size_for_data);
+}
+
+
+
 void initialize_Directory_Data_Block(Block* block, size_t fns, off_t self_offset, off_t parent_offset)
 {
   block->next_block = 0;

@@ -616,13 +616,16 @@ int main(int argc, char* argv[])
           /* get the path of the file */
           get_nth_string(read_input, buffer, i + 2);
 
+          /* get the offset of the source file */
           off_t source_file_offset = get_offset_from_path(fd, my_superblock, list, read_input);
           if (source_file_offset == (off_t) 0)
           {
             continue;
           }
 
+          /* get the source file */
           MDS* source_file = get_MDS(fd, source_file_offset);
+          /* check for errors */
           if (source_file == 0)
           {
             continue;
@@ -646,19 +649,23 @@ int main(int argc, char* argv[])
             continue;
           }
 
+          /* if source file is not empty, concatenate */
           if (source_file->size > 0)
           {
-            cfs_cat(fd, my_superblock, destination_file, source_file);
+            cfs_cat(fd, my_superblock, holes, destination_file, destination_file_offset, source_file);
           }
 
+          /* increment size */
           destination_file_size += source_file->size;
+          /* free source file */
           free(source_file);
+
           memset(read_input, 0, MAX_BUFFER_SIZE);
         }
 
 
         /* update the superblock */
-        my_superblock->current_size += sizeof(MDS) + destination_file->size;
+        my_superblock->current_size += sizeof(MDS) + block_size * destination_file->blocks_using;
         retval = set_superblock(my_superblock, fd);
         if (!retval)
         {
@@ -668,7 +675,6 @@ int main(int argc, char* argv[])
 
           return EXIT_FAILURE;
         }
-
 
 
         /* free up the used space */
