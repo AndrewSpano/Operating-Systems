@@ -494,7 +494,7 @@ int main(int argc, char* argv[])
 
       case 7:
       {
-
+        
         break;
       }
 
@@ -663,7 +663,7 @@ int main(int argc, char* argv[])
 
         int i = 0;
         size_t destination_file_size = 0;
-        /* iterate to concatenate all the files */
+        /* iterate to concatenate all the source files */
         for (; i < total_sources; i++)
         {
           /* get the path of the file */

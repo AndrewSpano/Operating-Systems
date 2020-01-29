@@ -807,6 +807,8 @@ int cfs_cat(int fd, superblock* my_superblock, hole_map* holes, MDS* destination
       }
       break;
     }
+
+    block = new_block;
   }
 
 
