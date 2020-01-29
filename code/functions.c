@@ -633,7 +633,23 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
 
 int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char* source_name, MDS* destination_directory, int flag_R, int flag_i, int flag_r)
 {
-  
+  size_t block_size = my_superblock->block_size;
+  size_t fns = my_superblock->filename_size;
+
+  off_t source_block_position = source->first_block;
+  Block* source_block = get_Block(fd, block_size, source_block_position);
+  DIE_IF_NULL(source_block);
+
+  /* is the entity to be copied is a file */
+  if (source->type == FILE)
+  {
+    
+  }
+  /* if the entity to be copied is a directory */
+  else if (source->type == DIRECTORY)
+  {
+
+  }
 
   return 1;
 }

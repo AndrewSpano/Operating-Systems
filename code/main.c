@@ -597,6 +597,25 @@ int main(int argc, char* argv[])
             break;
           }
 
+          /* ask user if he wants to copy the specific file */
+          if (flag_i)
+          {
+            char ask_option[MAX_BUFFER_SIZE] = {0};
+            printf("Do you want to copy the entity \"%s\" to the destination \"%s\"? Enter Y for yes, or N for no.\n", read_input, destination_directory_path);
+            fgets(ask_option, MAX_BUFFER_SIZE, stdin);
+
+            if (ask_option[0] != 'Y')
+            {
+              if (ask_option[0] != 'N')
+              {
+                printf("Unknown answer given: %s. Skipping entity.\n", ask_option);
+              }
+              /* reset the array used to read the user input */
+              memset(read_input, 0, MAX_BUFFER_SIZE);
+              continue;
+            }
+          }
+
           /* get the offset of the entity to be copied */
           off_t entity_offset = get_offset_from_path(fd, my_superblock, list, read_input);
           /* check for errors */
@@ -649,9 +668,11 @@ int main(int argc, char* argv[])
           }
 
 
+          /* call cfs_cp to copy the source file to the destination directory */
           int retval = cfs_cp(fd, my_superblock, holes, entity, last_entity_name, destination_directory, flag_R, flag_i, flag_r);
           if (!retval)
           {
+            printf("Unexpected error in cfs_cp. Exiting..\n");
             free(entity);
             free(destination_directory);
             FREE_AND_CLOSE(my_superblock, holes, list, fd);
