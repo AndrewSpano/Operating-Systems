@@ -467,6 +467,14 @@ int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, MDS* current_d
 
 
 
+int cfs_pwd(int fd, superblock* my_superblock, Stack_List* list)
+{
+  Stack_List_Print_Path(list);
+  return 1;
+}
+
+
+
 int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[])
 {
   /* this should never print */

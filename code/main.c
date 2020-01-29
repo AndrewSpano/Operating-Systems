@@ -399,7 +399,7 @@ int main(int argc, char* argv[])
       {
         BREAK_IF_NO_FILE_OPEN(fd);
 
-        Stack_List_Print_Path(list);
+        cfs_pwd(fd, my_superblock, list);
 
         break;
       }
