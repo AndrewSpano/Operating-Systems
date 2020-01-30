@@ -80,6 +80,11 @@ int print_characteristics(int fd, off_t offset)
     printf("Error get_MDS\n");
     return 0;
   }
+  if (offset == 0)
+  {
+    printf("problem with offset\n");
+    return 0;
+  }
   struct tm *info;
   // printf("%lu\n", (my_mds->creation_time));
   info = localtime(&(my_mds->creation_time));
@@ -97,6 +102,27 @@ int print_characteristics(int fd, off_t offset)
   free(my_mds);
   return 1;
 }
+
+
+// int get_size_of_directory(int fd, off_t offset)
+// {
+//   int size = 0;
+//   superblock* my_superblock = get_superblock(fd);
+//   MDS* my_mds = get_MDS(fd, offset);
+//   Block* my_block = get_Block(fd, my_superblock->block_size, my_mds->first_block);
+
+//   char* ret_name = (char *) my_block->data; //.
+//   off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+
+
+
+//   free(my_block);
+//   free(my_mds);
+//   free(my_superblock);
+
+// }
+
+
 
 int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u, int flag_d, int flag_h)
 {
@@ -131,7 +157,7 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
 
   // printf("offset for name: %lu\n", *ret_offset);
   ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size); //..
-  // ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+  ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
   if (flag_a)
   {
     if (flag_l)
@@ -139,14 +165,16 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
       print_characteristics(fd, *ret_offset);
       printf("\033[1;34m");
       printf("%s \n", ret_name);
+      printf("\033[0m");
     }
     else
     {
       printf("\033[1;34m");
       printf("%s \n", ret_name);
+      printf("\033[0m");
     }    
   }
-  printf("\033[0m");
+  // printf("\033[0m");
 
   int i = 2;
   for (; i < pairs_in_block; i++)
@@ -162,15 +190,25 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
           print_characteristics(fd, *ret_offset);
           printf("\033[1;34m");
           printf("%s \n", ret_name);
+          printf("\033[0m");
+          if (flag_r)
+          {
+            cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+          }
         }
         else
         {
           printf("\033[1;34m");
           printf("%s \n", ret_name);
+          printf("\033[0m");
+          if (flag_r)
+          {
+            cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+          }
         }
       }
       // printf("%s\n", ret_offset);
-      printf("\033[0m");
+      // printf("\033[0m");
     }
     else
     {
@@ -181,13 +219,23 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
           print_characteristics(fd, *ret_offset);
           printf("\033[1;34m");
           printf("%s \n", ret_name);
+          printf("\033[0m");
+          if (flag_r)
+          {
+            cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+          }
         }
         else
         {
           printf("\033[1;34m");
           printf("%s \n", ret_name);
+          printf("\033[0m");
+          if (flag_r)
+          {
+            cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+          }
         }
-        printf("\033[0m");
+        // printf("\033[0m");
       }
       else //file
       {
@@ -225,15 +273,25 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
           print_characteristics(fd, *ret_offset);
           printf("\033[1;34m");
           printf("%s \n", ret_name);
+          printf("\033[0m");
+          if (flag_r)
+          {
+            cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+          }
         }
         else
         {
           printf("\033[1;34m");
           printf("%s \n", ret_name);
+          printf("\033[0m");
+          if (flag_r) //xwris flag_l
+          {
+            cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+          }
         }
       }
       // printf("%s\n", ret_offset);
-      printf("\033[0m");
+      // printf("\033[0m");
     }
     else //print all
     {
@@ -244,13 +302,23 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
           print_characteristics(fd, *ret_offset);
           printf("\033[1;34m");
           printf("%s \n", ret_name);
+          printf("\033[0m");
+          if (flag_r)
+          {
+            cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+          }
         }
         else
         {
           printf("\033[1;34m");
           printf("%s \n", ret_name);
+          printf("\033[0m");
+          if (flag_r)//xwris flag_l
+          {
+            cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+          }
         }
-        printf("\033[0m");
+        // printf("\033[0m");
       }
       else //file
       {
@@ -283,15 +351,25 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
             print_characteristics(fd, *ret_offset);
             printf("\033[1;34m");
             printf("%s \n", ret_name);
+            printf("\033[0m");
+            if (flag_r)
+            {
+              cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+            }
           }
           else
           {
             printf("\033[1;34m");
             printf("%s \n", ret_name);
+            printf("\033[0m");
+            if (flag_r) //xwris flag_l
+            {
+              cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+            }
           }
         }
         // printf("%s\n", ret_offset);
-        printf("\033[0m");
+        // printf("\033[0m");
       }
       else //print all
       {
@@ -302,13 +380,23 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
             print_characteristics(fd, *ret_offset);
             printf("\033[1;34m");
             printf("%s \n", ret_name);
+            printf("\033[0m");
+            if (flag_r)
+            {
+              cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+            }
           }
           else
           {
             printf("\033[1;34m");
             printf("%s \n", ret_name);
+            printf("\033[0m");
+            if (flag_r)//xwris_flag_l
+            {
+              cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+            }
           }
-          printf("\033[0m");
+          // printf("\033[0m");
         }
         else //file
         {
