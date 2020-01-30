@@ -604,12 +604,15 @@ int main(int argc, char* argv[])
             printf("Do you want to copy the entity \"%s\" to the destination \"%s\"? Enter Y for yes, or N for no.\n", read_input, destination_directory_path);
             fgets(ask_option, MAX_BUFFER_SIZE, stdin);
 
-            if (ask_option[0] != 'Y')
+            while (strcmp(ask_option, "Y") && strcmp(ask_option, "Yes") && strcmp(ask_option, "YES") && strcmp(ask_option, "yes") && strcmp(ask_option, "N") && strcmp(ask_option, "No") && strcmp(ask_option, "No") && strcmp(ask_option, "no"))
             {
-              if (ask_option[0] != 'N')
-              {
-                printf("Unknown answer given: %s. Skipping entity.\n", ask_option);
-              }
+              printf("Unknown option entered. Please re-enter your option.\n");
+              memset(ask_option, 0, MAX_BUFFER_SIZE);
+              fgets(ask_option, MAX_BUFFER_SIZE, stdin);
+            }
+
+            if (!strcmp(ask_option, "N") || !strcmp(ask_option, "No") || !strcmp(ask_option, "No") || !strcmp(ask_option, "no"))
+            {
               /* reset the array used to read the user input */
               memset(read_input, 0, MAX_BUFFER_SIZE);
               continue;
@@ -924,6 +927,17 @@ int main(int argc, char* argv[])
         my_superblock->current_size += sizeof(MDS) + block_size * destination_file->blocks_using;
         my_superblock->total_entities++;
         retval = set_superblock(my_superblock, fd);
+        if (!retval)
+        {
+          free(destination_file);
+          Stack_List_Destroy(&destination_path_list);
+          FREE_AND_CLOSE(my_superblock, holes, list, fd);
+
+          return EXIT_FAILURE;
+        }
+
+        /* update the hole map */
+        retval = set_hole_map(holes, fd);
         if (!retval)
         {
           free(destination_file);

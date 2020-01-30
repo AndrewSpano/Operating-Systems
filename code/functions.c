@@ -648,7 +648,7 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
 
 
 
-int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char* source_name, MDS* destination_directory, off_t destination_offset int flag_R, int flag_i, int flag_r, uint depth)
+int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char* source_name, MDS* destination_directory, off_t destination_offset, int flag_R, int flag_i, int flag_r, uint depth)
 {
   /* get some important sizes */
   size_t block_size = my_superblock->block_size;
@@ -724,7 +724,7 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
         /* free the current source block because we don't need it anymore */
         free(source_block);
 
-        retval = set_Block(destination_block, fd, position_of_block);
+        retval = set_Block(destination_block, fd, block_size, position_of_block);
         free(destination_block);
         if (!retval)
         {
@@ -739,7 +739,7 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
 
         /* keep track of the position of the next block so that we know where
            to set it */
-        position_of_block = new_block_position;
+        position_of_block = next_block_position;
       }
     }
 
@@ -754,13 +754,13 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
     else if (retval == 1)
     {
       /* if insert_pair() returns 1, it means that we allocated a new block to insert the pair */
-      my_superblock->size += block_size;
+      my_superblock->current_size += block_size;
     }
 
 
     /* inform the superblock */
     my_superblock->total_entities++;
-    my_superblock->size += sizeof(MDS) + block_size * source->blocks_using;
+    my_superblock->current_size += sizeof(MDS) + block_size * source->blocks_using;
 
 
   }
@@ -768,7 +768,7 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
   else if (source->type == DIRECTORY)
   {
 
-    
+
 
   }
 
