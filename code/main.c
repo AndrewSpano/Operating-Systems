@@ -548,7 +548,7 @@ int main(int argc, char* argv[])
         }
 
         /* counter used later */
-        int total_sources = index - start_of_sources + 1;
+        int total_sources = index - start_of_sources - 1;
 
         /* information about the destination file */
         char destination_directory_path[MAX_BUFFER_SIZE] = {0};
@@ -583,7 +583,6 @@ int main(int argc, char* argv[])
         }
 
 
-
         /* iterate through all the sources */
         for (index = start_of_sources; index < start_of_sources + total_sources; index++)
         {
@@ -600,18 +599,7 @@ int main(int argc, char* argv[])
           /* ask user if he wants to copy the specific file */
           if (flag_i)
           {
-            char ask_option[MAX_BUFFER_SIZE] = {0};
-            printf("Do you want to copy the entity \"%s\" to the destination \"%s\"? Enter Y for yes, or N for no.\n", read_input, destination_directory_path);
-            fgets(ask_option, MAX_BUFFER_SIZE, stdin);
-
-            while (strcmp(ask_option, "Y") && strcmp(ask_option, "Yes") && strcmp(ask_option, "YES") && strcmp(ask_option, "yes") && strcmp(ask_option, "N") && strcmp(ask_option, "No") && strcmp(ask_option, "No") && strcmp(ask_option, "no"))
-            {
-              printf("Unknown option entered. Please re-enter your option.\n");
-              memset(ask_option, 0, MAX_BUFFER_SIZE);
-              fgets(ask_option, MAX_BUFFER_SIZE, stdin);
-            }
-
-            if (!strcmp(ask_option, "N") || !strcmp(ask_option, "No") || !strcmp(ask_option, "No") || !strcmp(ask_option, "no"))
+            if (!get_approval(read_input, destination_directory_path, "copy"))
             {
               /* reset the array used to read the user input */
               memset(read_input, 0, MAX_BUFFER_SIZE);
@@ -635,8 +623,10 @@ int main(int argc, char* argv[])
 
           /* get the name of the entity in order to check if an entity with the
              same name in the destination directory exists */
+          char temp_read_input[MAX_BUFFER_SIZE] = {0};
+          strcpy(temp_read_input, read_input);
           char last_entity_name[MAX_BUFFER_SIZE] = {0};
-          extract_last_entity_from_path(read_input, last_entity_name);
+          extract_last_entity_from_path(temp_read_input, last_entity_name);
 
 
           /* check for existance of entity with same name */
@@ -672,7 +662,7 @@ int main(int argc, char* argv[])
 
 
           /* call cfs_cp to copy the source file to the destination directory */
-          int retval = cfs_cp(fd, my_superblock, holes, entity, last_entity_name, destination_directory, destination_directory_offset, flag_R, flag_i, flag_r, 0);
+          int retval = cfs_cp(fd, my_superblock, holes, entity, last_entity_name, destination_directory, destination_directory_offset, flag_R, flag_i, flag_r, read_input, destination_directory_path);
           if (!retval)
           {
             printf("Unexpected error in cfs_cp. Exiting..\n");
@@ -690,7 +680,8 @@ int main(int argc, char* argv[])
           memset(read_input, 0, MAX_BUFFER_SIZE);
         }
 
-
+        /* free up the allocated memory */
+        free(destination_directory);
 
         break;
       }

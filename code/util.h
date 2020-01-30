@@ -16,6 +16,7 @@ int is_positive_integer(const char* str);
 int contains_unknown_flag(const char* str, const char* flags);
 int path_is_absolute(const char path[]);
 int extract_last_entity_from_path(char path[], char* destination_string);
+int get_approval(char* source, char* destination, char* operation);
 
 /* get the parameters of functions */
 int get_cfs_touch_parameters(const char buffer[], int* flag_a, int* flag_m);

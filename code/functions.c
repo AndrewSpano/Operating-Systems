@@ -648,7 +648,7 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
 
 
 
-int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char* source_name, MDS* destination_directory, off_t destination_offset, int flag_R, int flag_i, int flag_r, uint depth)
+int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char* source_name, MDS* destination_directory, off_t destination_offset, int flag_R, int flag_i, int flag_r, char* source_path, char* destination_path)
 {
   /* get some important sizes */
   size_t block_size = my_superblock->block_size;
@@ -656,11 +656,9 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
 
 
 
-
   /* is the entity to be copied is a file */
   if (source->type == FILE)
   {
-
 
     MDS* new_file_to_be_copied = NULL;
     MALLOC_OR_DIE_3(new_file_to_be_copied, sizeof(MDS));
@@ -755,6 +753,7 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
     {
       /* if insert_pair() returns 1, it means that we allocated a new block to insert the pair */
       my_superblock->current_size += block_size;
+      destination_directory->blocks_using++;
     }
 
 
@@ -768,7 +767,134 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
   else if (source->type == DIRECTORY)
   {
 
+    /* copy the directory */
+    int retval = cfs_mkdir(fd, my_superblock, holes, destination_directory, destination_offset, source_name);
+    if (!retval)
+    {
+      printf("Error in cfs_mkdir() when called from cfs_cp().\n");
+      return 0;
+    }
 
+    /* get the position of the directory we just copied */
+    off_t copy_directory_offset = directory_get_offset(fd, destination_directory, block_size, fns, source_name);
+    /* check for errors */
+    if (copy_directory_offset == (off_t) 0)
+    {
+      return 0;
+    }
+    else if (copy_directory_offset == (off_t) -1)
+    {
+      printf("Error in cfs_cp(). This message should have never been printed because the insertion above worked, therefore the entity must exist. Congratulations, ELOUSES.\n");
+      return 0;
+    }
+
+
+    /* if we are to copy the directories recursively */
+    if (flag_r)
+    {
+      /* initialize useful variables */
+      size_t size_of_pair = fns + sizeof(off_t);
+
+      /* get the copy directory */
+      MDS* copy_directory = get_MDS(fd, copy_directory_offset);
+      if (copy_directory == NULL)
+      {
+        return 0;
+      }
+
+      /* get the position of the data blocks of the source directory */
+      off_t directory_data_block_position = copy_directory->first_block;
+      /* iterate through all the directory data blocks */
+      while (directory_data_block_position != (off_t) 0)
+      {
+        Block* directory_data_block = get_Block(fd, block_size, directory_data_block_position);
+        if (directory_data_block == NULL)
+        {
+          free(copy_directory);
+          return 0;
+        }
+
+        char* name = (char *) directory_data_block->data;
+
+        uint number_of_pairs = directory_data_block->bytes_used / size_of_pair;
+        int i = 0;
+        for (; i < number_of_pairs; i++)
+        {
+          /* skip the hidden directories */
+          if (!strcmp(name, ".") || !strcmp(name, ".."))
+          {
+            continue;
+          }
+
+          /* fix the path for the source */
+          char temp_source_buffer[MAX_BUFFER_SIZE] = {0};
+          strcpy(temp_source_buffer, source_path);
+          if (temp_source_buffer[strlen(temp_source_buffer) - 1] != '/')
+          {
+            strcat(temp_source_buffer, "/");
+          }
+          strcat(temp_source_buffer, name);
+
+          /* fix the path for the destination */
+          char temp_destination_buffer[MAX_BUFFER_SIZE] = {0};
+          strcpy(temp_destination_buffer, destination_path);
+          if (temp_destination_buffer[strlen(temp_destination_buffer) - 1] != '/')
+          {
+            strcat(temp_destination_buffer, "/");
+          }
+          strcat(temp_destination_buffer, source_name);
+
+          /* ask for persmission if -i parameter has been given */
+          if (flag_i)
+          {
+            if (!get_approval(temp_source_buffer, temp_destination_buffer, "copy"))
+            {
+              continue;
+            }
+          }
+
+          /* find the new source that will be copied */
+          off_t* entity_offset = pointer_to_offset(name, fns);
+          /* get the new source that will be copied */
+          MDS* new_source = get_MDS(fd, *entity_offset);
+          if (new_source == NULL)
+          {
+            free(directory_data_block);
+            free(copy_directory);
+            return 0;
+          }
+
+          /* copy the entity recursively */
+          retval = cfs_cp(fd, my_superblock, holes, new_source, name, copy_directory, copy_directory_offset, flag_R, flag_i, flag_r, temp_source_buffer, temp_destination_buffer);
+          if (!retval)
+          {
+            free(directory_data_block);
+            free(copy_directory);
+            return 0;
+          }
+
+          /* free the allocated memory */
+          free(new_source);
+
+          /* point to the next name */
+          name = pointer_to_next_name(name, fns);
+        }
+
+        /* get the position of the next directory data block */
+        directory_data_block_position = directory_data_block->next_block;
+        /* free the current block because we finished with it */
+        free(directory_data_block);
+      }
+
+      /* free with the copy directory because we finished with it */
+      /* update the destination directory */
+      retval = set_MDS(copy_directory, fd, copy_directory_offset);
+      free(copy_directory);
+      if (!retval)
+      {
+        return 0;
+      }
+    }
 
   }
 
@@ -788,6 +914,12 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
     return 0;
   }
 
+  /* update the destination directory */
+  retval = set_MDS(destination_directory, fd, destination_offset);
+  if (!retval)
+  {
+    return 0;
+  }
 
   return 1;
 }

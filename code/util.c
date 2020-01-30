@@ -283,6 +283,29 @@ int extract_last_entity_from_path(char path[], char* destination_string)
 }
 
 
+/* ask user if they want to perfrom an operation. Returns 1 if user wants, else
+   returns 0. */
+int get_approval(char* source, char* destination, char* operation)
+{
+  char ask_option[MAX_BUFFER_SIZE] = {0};
+  printf("Do you want to %s the entity \"%s\" to the destination \"%s\"? Enter Y for yes, or N for no.\n", operation, source, destination);
+  fgets(ask_option, MAX_BUFFER_SIZE, stdin);
+
+  while (strcmp(ask_option, "Y") && strcmp(ask_option, "Yes") && strcmp(ask_option, "YES") && strcmp(ask_option, "yes") && strcmp(ask_option, "N") && strcmp(ask_option, "No") && strcmp(ask_option, "No") && strcmp(ask_option, "no"))
+  {
+    printf("Unknown option entered. Please re-enter your option.\n");
+    memset(ask_option, 0, MAX_BUFFER_SIZE);
+    fgets(ask_option, MAX_BUFFER_SIZE, stdin);
+  }
+
+  if (!strcmp(ask_option, "N") || !strcmp(ask_option, "No") || !strcmp(ask_option, "No") || !strcmp(ask_option, "no"))
+  {
+    return 0;
+  }
+
+  return 1;
+}
+
 
 
 /* --------------------------------       GET FUNCTION PARAMETERS           ----------------------------------- */

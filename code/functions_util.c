@@ -342,8 +342,8 @@ uint number_of_sub_entities_in_directory(MDS* current_directory, size_t fns)
 }
 
 
-/* returns 1 if the name already exists in the directory as a sub-entity
-   else, returns 0 */
+/* returns the offset of the name if the name already exists in the directory
+   as a sub-entity; else returns 0 */
 off_t directory_get_offset(int fd, MDS* directory, size_t block_size, size_t fns, char* target_name)
 {
   off_t block_position = directory->first_block;
@@ -407,7 +407,6 @@ off_t get_offset_from_path(int fd, superblock* my_superblock, Stack_List* list, 
   extract_last_entity_from_path(path, last_entity_name);
 
   Stack_List* file_path_list = copy_List(list);
-
   if (file_path_list == NULL)
   {
     return (off_t) 0;
