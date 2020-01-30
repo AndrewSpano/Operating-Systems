@@ -669,7 +669,7 @@ int main(int argc, char* argv[])
 
 
           /* call cfs_cp to copy the source file to the destination directory */
-          int retval = cfs_cp(fd, my_superblock, holes, entity, last_entity_name, destination_directory, flag_R, flag_i, flag_r);
+          int retval = cfs_cp(fd, my_superblock, holes, entity, last_entity_name, destination_directory, destination_directory_offset, flag_R, flag_i, flag_r, 0);
           if (!retval)
           {
             printf("Unexpected error in cfs_cp. Exiting..\n");

@@ -326,17 +326,26 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, MDS* current_d
   }
 
 
-  /* update the superblock */
+  /* inform the superblock */
   my_superblock->total_entities += 1;
   /* the size of the new directory plus its first block */
   my_superblock->current_size += sizeof(MDS) + block_size;
 
+  /* update the superblock */
   retval = set_superblock(my_superblock, fd);
   if (retval == 0)
   {
     perror("Error occured in set_superblock() when called from cfs_mkdir() before finishing the function");
     return 0;
   }
+
+  /* update the hole map */
+  retval = set_hole_map(holes, fd);
+  if (!retval)
+  {
+    return 0;
+  }
+
 
   return 1;
 }
@@ -450,17 +459,25 @@ int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, MDS* current_d
   }
 
 
-  /* update the superblock */
+  /* inform the superblock */
   my_superblock->total_entities += 1;
-  /* the size of the new file */
   my_superblock->current_size += sizeof(MDS);
 
+  /* update the superblock */
   retval = set_superblock(my_superblock, fd);
   if (retval == 0)
   {
     perror("Error occured in set_superblock() when called from cfs_touch() before finishing the function");
     return 0;
   }
+
+  /* update the hole map */
+  retval = set_hole_map(holes, fd);
+  if (!retval)
+  {
+    return 0;
+  }
+
 
   return 1;
 }
@@ -631,25 +648,146 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
 
 
 
-int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char* source_name, MDS* destination_directory, int flag_R, int flag_i, int flag_r)
+int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char* source_name, MDS* destination_directory, off_t destination_offset int flag_R, int flag_i, int flag_r, uint depth)
 {
+  /* get some important sizes */
   size_t block_size = my_superblock->block_size;
   size_t fns = my_superblock->filename_size;
 
-  off_t source_block_position = source->first_block;
-  Block* source_block = get_Block(fd, block_size, source_block_position);
-  DIE_IF_NULL(source_block);
+
+
 
   /* is the entity to be copied is a file */
   if (source->type == FILE)
   {
-    
+
+
+    MDS* new_file_to_be_copied = NULL;
+    MALLOC_OR_DIE_3(new_file_to_be_copied, sizeof(MDS));
+
+    /* find where to place the new file */
+    off_t position_of_new_file = find_hole(holes, sizeof(MDS));
+
+    /* find where to place the first block */
+    off_t position_of_block = 0;
+    if (source->size > 0)
+    {
+      /* find where to place the first block */
+      position_of_block = find_hole(holes, block_size);
+    }
+
+    /* initialize the attribues of the copied file */
+    initialize_MDS(new_file_to_be_copied, my_superblock->total_entities, FILE, 1, source->blocks_using, source->size, destination_offset, position_of_block);
+
+    /* write the file header to the cfs */
+    int retval = set_MDS(new_file_to_be_copied, fd, position_of_new_file);
+    free(new_file_to_be_copied);
+    if (!retval)
+    {
+      return 0;
+    }
+
+
+    /* if there are data blocks to be copied */
+    if (source->size > 0)
+    {
+      off_t source_block_position = source->first_block;
+      off_t next_block_position = position_of_block;
+
+      /* copy all the data blocks one by one */
+      while (69 * 0 == 0 * 69)
+      {
+        /* get the source block */
+        Block* source_block = get_Block(fd, block_size, source_block_position);
+        DIE_IF_NULL(source_block);
+
+        /* get a block for the destination */
+        Block* destination_block = malloc(block_size);
+        if (destination_block == NULL)
+        {
+          free(source_block);
+          return 0;
+        }
+
+        /* copy the data */
+        memcpy(destination_block, source_block, block_size);
+        /* if this is not the last data block, find where to place the next */
+        if (source_block->next_block != 0)
+        {
+          /* where the next block will be placed */
+          next_block_position = find_hole(holes, block_size);
+          destination_block->next_block = next_block_position;
+        }
+
+        /* get the position of the next source block */
+        source_block_position = source_block->next_block;
+        /* free the current source block because we don't need it anymore */
+        free(source_block);
+
+        retval = set_Block(destination_block, fd, position_of_block);
+        free(destination_block);
+        if (!retval)
+        {
+          return 0;
+        }
+
+        /* break if all the blocks have been copied */
+        if (source_block_position == 0)
+        {
+          break;
+        }
+
+        /* keep track of the position of the next block so that we know where
+           to set it */
+        position_of_block = new_block_position;
+      }
+    }
+
+
+
+    /* insert pair <source_name, offset> to the destination directory */
+    retval = insert_pair(fd, holes, destination_directory, source_name, position_of_new_file, block_size, fns);
+    if (retval == 0)
+    {
+      return 0;
+    }
+    else if (retval == 1)
+    {
+      /* if insert_pair() returns 1, it means that we allocated a new block to insert the pair */
+      my_superblock->size += block_size;
+    }
+
+
+    /* inform the superblock */
+    my_superblock->total_entities++;
+    my_superblock->size += sizeof(MDS) + block_size * source->blocks_using;
+
+
   }
   /* if the entity to be copied is a directory */
   else if (source->type == DIRECTORY)
   {
 
+    
+
   }
+
+
+
+  /* update the superblock */
+  int retval = set_superblock(my_superblock, fd);
+  if (!retval)
+  {
+    return 0;
+  }
+
+  /* update the hole map */
+  retval = set_hole_map(holes, fd);
+  if (!retval)
+  {
+    return 0;
+  }
+
 
   return 1;
 }
