@@ -498,7 +498,7 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
   if (is_Empty(list))
   {
     printf("Bug: list is empty.\n");
-    return -1;
+    return 0;
   }
 
   /* if the command "cfs_cd" is given or the path is absolute, just go to the
@@ -610,7 +610,7 @@ int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[
         printf("Error: directory %s does not exist.\n", wrong_directory);
         free(current_directory);
         free(temp_directory);
-        return -1;
+        return 0;
       }
       else if (directory_offset == (off_t) 0)
       {
