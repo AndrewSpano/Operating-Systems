@@ -119,7 +119,7 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
   MALLOC_OR_DIE(root_data, block_size, fd);
 
   /* initialize its values */
-  initialize_Directory_Data_Block(root_data, fns, superblock_size + hole_map_size, superblock_size + hole_map_size);
+  initialize_Directory_Data_Block(root_data, block_size, fns, superblock_size + hole_map_size, superblock_size + hole_map_size);
 
   /* write to the cfs file */
   WRITE_OR_DIE(fd, root_data, block_size);
@@ -283,7 +283,7 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, MDS* current_d
   Block* data_block = NULL;
   MALLOC_OR_DIE_3(data_block, block_size);
   /* initialize the new directory data block */
-  initialize_Directory_Data_Block(data_block, fns, mds_position, parent_offset);
+  initialize_Directory_Data_Block(data_block, block_size, fns, mds_position, parent_offset);
 
   /* write the block in the cfs file */
   retval = set_Block(data_block, fd, block_size, block_position);
@@ -803,7 +803,7 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
       }
 
       /* get the position of the data blocks of the source directory */
-      off_t directory_data_block_position = copy_directory->first_block;
+      off_t directory_data_block_position = source->first_block;
       /* iterate through all the directory data blocks */
       while (directory_data_block_position != (off_t) 0)
       {
@@ -823,6 +823,8 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
           /* skip the hidden directories */
           if (!strcmp(name, ".") || !strcmp(name, ".."))
           {
+            /* point to the next name */
+            name = pointer_to_next_name(name, fns);
             continue;
           }
 

@@ -85,8 +85,7 @@ int insert_pair(int fd, hole_map* holes, MDS* mds, char* insert_name, off_t inse
     Block* new_block = NULL;
     MALLOC_OR_DIE_3(new_block, block_size);
 
-    new_block->next_block = 0;
-    new_block->bytes_used = 0;
+    initialize_data_Block(new_block, block_size);
     insert_pair_into_block(block, insert_name, insert_offset, fns);
 
     retval = set_Block(new_block, fd, block_size, new_block_position);
@@ -373,6 +372,7 @@ off_t directory_get_offset(int fd, MDS* directory, size_t block_size, size_t fns
         off_t* ptr = pointer_to_offset(name, fns);
         off_t return_offset = *ptr;
         free(block);
+        // printf("dir_get_off: name = %s\n", name);
         return return_offset;
       }
 

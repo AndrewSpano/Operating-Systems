@@ -696,9 +696,9 @@ void initialize_data_Block(Block* block, size_t block_size)
 
 
 
-void initialize_Directory_Data_Block(Block* block, size_t fns, off_t self_offset, off_t parent_offset)
+void initialize_Directory_Data_Block(Block* block, size_t block_size, size_t fns, off_t self_offset, off_t parent_offset)
 {
-  block->next_block = 0;
+  initialize_data_Block(block, block_size);
 
   char* name = (char *) block->data;
   off_t* offset = pointer_to_offset(name, fns);
