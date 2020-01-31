@@ -285,7 +285,7 @@ int extract_last_entity_from_path(char path[], char* destination_string)
 
 /* ask user if they want to perfrom an operation. Returns 1 if user wants, else
    returns 0. */
-int get_approval(char* source, char* destination, char* operation)
+int get_approval(char* source, char* destination, const char* operation)
 {
   char ask_option[MAX_BUFFER_SIZE] = {0};
   printf("Do you want to %s the entity \"%s\" to the destination \"%s\"? Enter Y for yes, or N for no.\n", operation, source, destination);
@@ -688,10 +688,11 @@ void initialize_MDS(MDS* mds, uint id, uint type, uint number_of_hard_links, uin
 
 void initialize_data_Block(Block* block, size_t block_size)
 {
-  block->next_block = 0;
-  block->bytes_used = 0;
-  size_t size_for_data = block_size - sizeof(Block);
-  memset(block->data, 0, size_for_data);
+  // block->next_block = 0;
+  // block->bytes_used = 0;
+  // size_t size_for_data = block_size - sizeof(Block);
+  // memset(block->data, 0, size_for_data);
+  memset(block, 0, block_size);
 }
 
 

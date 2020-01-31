@@ -15,6 +15,7 @@ int cfs_pwd(int fd, superblock* my_superblock, Stack_List* list);
 int cfs_cd(int fd, superblock* my_superblock, Stack_List* list, const char path[]);
 int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char* source_name, MDS* destination_directory, off_t destination_offset, int flag_R, int flag_i, int flag_r, char* source_path, char* destination_path);
 int cfs_cat(int fd, superblock* my_superblock, hole_map* holes, MDS* destination_file, off_t destination_file_offset, MDS* source_file);
+int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list, char source_file_path[], char output_file_path[]);
 
 int cfs_read(char* cfs_filename, int fd);
 

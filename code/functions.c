@@ -1124,6 +1124,154 @@ int cfs_cat(int fd, superblock* my_superblock, hole_map* holes, MDS* destination
 
 
 
+int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list, char source_file_path[], char output_file_path[])
+{
+  /* max dir file number */
+  size_t block_size = my_superblock->block_size;
+  size_t fns = my_superblock->filename_size;
+  uint mdfn = my_superblock->max_dir_file_number;
+
+
+  /* get the offset of the entity that we want to create the hard link on */
+  off_t source_offset = get_offset_from_path(fd, my_superblock, list, source_file_path);
+  if (source_offset == (off_t) 0)
+  {
+    return -1;
+  }
+
+
+
+  /* get the source file */
+  MDS* source = get_MDS(fd, source_offset);
+  if (source == NULL)
+  {
+    return 0;
+  }
+  else if (source->type == DIRECTORY)
+  {
+    printf("Error input: hard links can't be created on directories.\n");
+    free(source);
+    return -1;
+  }
+
+
+  /* array used to store the name that the link will have */
+  char name_of_link[MAX_BUFFER_SIZE] = {0};
+  extract_last_entity_from_path(output_file_path, name_of_link);
+
+
+  /* get the offset of the directory that will contain the link */
+  off_t output_directory_offset = get_offset_from_path(fd, my_superblock, list, output_file_path);
+  if (output_directory_offset == (off_t) 0)
+  {
+    free(source);
+    return 0;
+  }
+
+
+  /* get the destination directory */
+  MDS* destination_directory = get_MDS(fd, output_directory_offset);
+  /* check for errors */
+  if (destination_directory == NULL)
+  {
+    free(source);
+    return 0;
+  }
+  else if (destination_directory->type != DIRECTORY)
+  {
+    printf("Path given is wrong, the destination is not a directory. This should actually never print because get_offset() should catch the mistake.\n");
+    free(source);
+    free(destination_directory);
+    return -1;
+  }
+  else if (number_of_sub_entities_in_directory(destination_directory, fns) == mdfn)
+  {
+    printf("Destination directory for the output file has reached its max capacity, and therefore the hard link can't be added to it.\n");
+    free(source);
+    free(destination_directory);
+    return -1;
+  }
+
+  /* again check for errors */
+  int retval = name_exists_in_directory(fd, destination_directory, block_size, fns, name_of_link);
+  if (retval == 0)
+  {
+    free(source);
+    free(destination_directory);
+    return 0;
+  }
+  else if (retval == 1)
+  {
+    if (output_file_path[0] != 0)
+    {
+      printf("Error input: the hard link \"%s\" can't be created in the directory \"%s\" because an entity with the same name already exists in that directory.\n", name_of_link, output_file_path);
+    }
+    else
+    {
+      printf("Error input: the hard link \"%s\" can't be created in the current directory because an entity with the same name already exists.\n", name_of_link);
+    }
+    free(source);
+    free(destination_directory);
+    return -1;
+  }
+
+
+  retval = insert_pair(fd, holes, destination_directory, name_of_link, source_offset, block_size, fns);
+  if (retval == 0)
+  {
+    free(source);
+    free(destination_directory);
+    return 0;
+  }
+  else if (retval == 1)
+  {
+    /* if insert_pair() returned 1, it means that we allocated a new block to
+       insert the pair, so inform the superblock and update the structs */
+    my_superblock->current_size += block_size;
+
+    /* update the superblock */
+    retval = set_superblock(my_superblock, fd);
+    if (retval == 0)
+    {
+      perror("Error occured in set_superblock() when called from cfs_ln() before finishing the function");
+      free(source);
+      free(destination_directory);
+      return 0;
+    }
+
+    /* update the hole map */
+    retval = set_hole_map(holes, fd);
+    if (!retval)
+    {
+      perror("Error occured in set_hole_map() when called from cfs_ln() before finishing the function");
+      free(source);
+      free(destination_directory);
+      return 0;
+    }
+  }
+
+
+  /* increment the number of hard links */
+  source->number_of_hard_links++;
+
+  /* update the MDS in the cfs */
+  retval = set_MDS(source, fd, source_offset);
+  /* free up the allocated memory */
+  free(source);
+  free(destination_directory);
+
+  /* last check for errors */
+  if (!retval)
+  {
+    return 0;
+  }
+
+
+  /* return 1 if everything goes smoothly */
+  return 1;
+}
+
+
 
 int cfs_read(char* cfs_filename, int fd)
 {

@@ -372,7 +372,6 @@ off_t directory_get_offset(int fd, MDS* directory, size_t block_size, size_t fns
         off_t* ptr = pointer_to_offset(name, fns);
         off_t return_offset = *ptr;
         free(block);
-        // printf("dir_get_off: name = %s\n", name);
         return return_offset;
       }
 
@@ -392,11 +391,74 @@ off_t directory_get_offset(int fd, MDS* directory, size_t block_size, size_t fns
 
 
 
+/* returns 1 if a name exists in a directory, -1 if it doesn't and 0 if an error
+   occurs in the process */
+int name_exists_in_directory(int fd, MDS* directory, size_t block_size, size_t fns, char* target_name)
+{
+  off_t block_position = directory->first_block;
+  size_t size_of_pair = fns + sizeof(off_t);
+
+  /* check all the blocks of a directory */
+  while (block_position != 0)
+  {
+    /* get the block that is being pointed at */
+    Block* block = get_Block(fd, block_size, block_position);
+    if (block == NULL)
+    {
+      return (off_t) 0;
+    }
+
+    uint number_of_pairs = block->bytes_used / size_of_pair;
+    char* name = (char *) block->data;
+
+    int i = 0;
+    /* check all the names inside the data block of the directory */
+    for (; i < number_of_pairs; i++)
+    {
+      /* if we find a same name, return 1 */
+      if (!strcmp(name, target_name))
+      {
+        free(block);
+        return 1;
+      }
+
+      /* if not, point to the next name */
+      name = pointer_to_next_name(name, fns);
+    }
+
+    /* get the position of the next block */
+    block_position = block->next_block;
+    /* free the current block */
+    free(block);
+  }
+
+  /* return -1 if no same name is found after scanning all the directory blocks */
+  return -1;
+}
+
+
+
 
 
 /* return the offset of the last entity from a given path */
 off_t get_offset_from_path(int fd, superblock* my_superblock, Stack_List* list, char original_path[])
 {
+  /* check if an empty path has been given; this means that we want the
+     current directory */
+  if (original_path[0] == 0)
+  {
+    /* get the offset of the current directory, in order to get the directory */
+    off_t destination_directory_offset = Stack_List_Peek_offset(list);
+    if (destination_directory_offset == (off_t) 0)
+    {
+      printf("Error in Stack_List_Peek_offset() when called from functions_util().\n");
+      return (off_t) 0;
+    }
+
+    return destination_directory_offset;
+  }
+
+  /* get some important sizes */
   size_t block_size = my_superblock->block_size;
   size_t fns = my_superblock->filename_size;
 

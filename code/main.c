@@ -948,6 +948,45 @@ int main(int argc, char* argv[])
 
       case 9:
       {
+        /* array used to read strings from the user input */
+        char read_input[MAX_BUFFER_SIZE] = {0};
+
+        /* arrays to store the paths of the files given as parameters */
+        char source_file_path[MAX_BUFFER_SIZE] = {0};
+        char output_file_path[MAX_BUFFER_SIZE] = {0};
+
+
+        /* check for correct input */
+        int exists = get_nth_string(source_file_path, buffer, 2);
+        if (!exists)
+        {
+          printf("Error input: you must give at least one source file and one output file.\n");
+          break;
+        }
+
+        /* check for correct input */
+        exists = get_nth_string(output_file_path, buffer, 3);
+        if (!exists)
+        {
+          printf("Error input: you must give at least one output file.\n");
+          break;
+        }
+
+        /* check for correct input */
+        exists = get_nth_string(read_input, buffer, 4);
+        if (exists)
+        {
+          printf("Error input: too many arguments. Input should be something like: cfs_ln source_file output_file.\n");
+          break;
+        }
+
+
+        int retval = cfs_ln(fd, my_superblock, holes, list, source_file_path, output_file_path);
+        if (retval == 0)
+        {
+          FREE_AND_CLOSE(my_superblock, holes, list, fd);
+          return EXIT_FAILURE;
+        }
 
         break;
       }
