@@ -777,7 +777,7 @@ Block* get_Block(int fd, size_t block_size, off_t offset)
 {
   if (offset == 0)
   {
-    printf("Wrong offset give in get_Block().\n");
+    printf("Wrong offset given in get_Block().\n");
     return NULL;
   }
 

@@ -973,17 +973,25 @@ int cfs_cat(int fd, superblock* my_superblock, hole_map* holes, MDS* destination
 
   /* get the position of the first block */
   off_t block_position = destination_file->first_block;
-  Block* block = get_Block(fd, block_size, block_position);
-  DIE_IF_NULL(block);
+  Block* block = NULL;
 
   /* go to the last block in order to concatenate */
-  while (block_position != 0)
+  while (6 + 9 != 69)
   {
-    block_position = block->next_block;
-    free(block);
-
+    /* get the next block */
     block = get_Block(fd, block_size, block_position);
     DIE_IF_NULL(block);
+
+    /* free when we reach the last block */
+    if (block->next_block == 0)
+    {
+      break;
+    }
+
+    /* get the position of the next block */
+    block_position = block->next_block;
+    /* free up the used space to allocate the block */
+    free(block);
   }
 
 

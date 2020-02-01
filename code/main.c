@@ -900,7 +900,16 @@ int main(int argc, char* argv[])
               free(destination_file);
               Stack_List_Destroy(&destination_path_list);
               FREE_AND_CLOSE(my_superblock, holes, list, fd);
+              return EXIT_FAILURE;
+            }
 
+            retval = set_MDS(destination_file, fd, destination_file_offset);
+            if (!retval)
+            {
+              free(source_file);
+              free(destination_file);
+              Stack_List_Destroy(&destination_path_list);
+              FREE_AND_CLOSE(my_superblock, holes, list, fd);
               return EXIT_FAILURE;
             }
           }
