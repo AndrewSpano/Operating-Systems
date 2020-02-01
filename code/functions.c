@@ -247,14 +247,18 @@ int cfs_workwith(char* cfs_filename, superblock** my_superblock, hole_map** hole
 
 int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, MDS* current_directory, off_t parent_offset, char* insert_name)
 {
+  /* get some important parameters */
   size_t block_size = my_superblock->block_size;
   size_t fns = my_superblock->filename_size;
   uint total_entities = my_superblock->total_entities;
 
+  /* calculate the size of the struct MDS */
   size_t size_of_mds = sizeof(MDS);
+  /* find where to place the MDS and its first data block */
   off_t mds_position = find_hole(holes, size_of_mds);
   off_t block_position = find_hole(holes, block_size);
 
+  /* if there are no more holes */
   if (mds_position == 0 || block_position == 0)
   {
     printf("No more holes are available. Make the hole map bigger in the next cfs file you make\n");
@@ -277,6 +281,7 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, MDS* current_d
     return 0;
   }
 
+  /* free the new MDS because we don't need it anymore */
   free(new_mds);
 
 
@@ -296,6 +301,7 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, MDS* current_d
     return 0;
   }
 
+  /* free the data block because we don't need it anymore */
   free(data_block);
 
   /* insert the pair */
@@ -1200,7 +1206,7 @@ int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
     free(destination_directory);
     return -1;
   }
-  else if (number_of_sub_entities_in_directory(destination_directory, fns) == mdfn)
+  else if (!is_root_offset(my_superblock, output_directory_offset) && number_of_sub_entities_in_directory(destination_directory, fns) == mdfn)
   {
     printf("Destination directory for the output file has reached its max capacity, and therefore the hard link can't be added to it.\n");
     free(source);

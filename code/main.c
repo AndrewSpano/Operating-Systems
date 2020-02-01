@@ -132,16 +132,15 @@ int main(int argc, char* argv[])
 
       case 2:
       {
-
         BREAK_IF_NO_FILE_OPEN(fd);
 
+        /* array of characters used to read the user input */
         char read_input[MAX_BUFFER_SIZE] = {0};
         if (!get_nth_string(read_input, buffer, 2))
         {
           printf("Error input, at least 1 new directory has to be given.\n");
           break;
         }
-
 
         /* for every directory name given */
         int index = 2;
@@ -196,6 +195,31 @@ int main(int argc, char* argv[])
             {
               printf("Can't create the directory \"%s\" because the directory \"%s\" has already reached max number of sub-entites.\n", new_directory_name, read_input);
             }
+            free(destination_directory);
+            index++;
+            directory_exists = get_nth_string(read_input, buffer, index);
+            continue;
+          }
+
+          /* make sure than no entity with the same name exists */
+          off_t exists = directory_get_offset(fd, destination_directory, block_size, fns, new_directory_name);
+          if (exists == (off_t) 0)
+          {
+            printf("Error in directory_get_offset() when called from main() from case 2.\n");
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+          else if (exists != (off_t) -1)
+          {
+            if (read_input[0] == 0)
+            {
+              printf("Can't create the directory \"%s\" because the current directory already contains an entity with the same name.\n", new_directory_name);
+            }
+            else
+            {
+              printf("Can't create the directory \"%s\" because the directory \"%s\" contains an entity with the same name.\n", new_directory_name, read_input);
+            }
+            free(destination_directory);
             index++;
             directory_exists = get_nth_string(read_input, buffer, index);
             continue;
@@ -545,7 +569,7 @@ int main(int argc, char* argv[])
           free(destination_directory);
           break;
         }
-        else if (number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
+        else if (!is_root_offset(my_superblock, destination_directory_offset) && number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
         {
           printf("Error: the directory \"%s\" has reached it's max number of files, therefore nothing can be copied in it.\n", read_input);
           free(destination_directory);
@@ -560,7 +584,7 @@ int main(int argc, char* argv[])
           get_nth_string(read_input, buffer, index);
 
           /* check for errors */
-          if (number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
+          if (!is_root_offset(my_superblock, destination_directory_offset) && number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
           {
             printf("Error: entity \"%s\" and those after that can't be copied because the destination directory has reached its max limit in entities.\n", read_input);
             break;
@@ -979,26 +1003,26 @@ int main(int argc, char* argv[])
       case 10:
       {
          print_hole_table(holes);
-        holes->holes_table[0].start = 100; 
+        holes->holes_table[0].start = 100;
         holes->holes_table[0].end = 200;
         holes->current_hole_number = 1;
 
-        holes->holes_table[1].start = 300; 
-        holes->holes_table[1].end = 400; 
+        holes->holes_table[1].start = 300;
+        holes->holes_table[1].end = 400;
         holes->current_hole_number++;
 
-        holes->holes_table[2].start = 700; 
-        holes->holes_table[2].end = 1000; 
+        holes->holes_table[2].start = 700;
+        holes->holes_table[2].end = 1000;
         holes->current_hole_number++;
-        
-        holes->holes_table[3].start = 1300; 
-        holes->holes_table[3].end = 1400; 
+
+        holes->holes_table[3].start = 1300;
+        holes->holes_table[3].end = 1400;
         holes->current_hole_number++;
-        
-        holes->holes_table[4].start = 3500; 
-        holes->holes_table[4].end = 0; 
+
+        holes->holes_table[4].start = 3500;
+        holes->holes_table[4].end = 0;
         holes->current_hole_number++;
-        
+
         print_hole_table(holes);
 
         insert_hole(holes, 0, 50, fd);
@@ -1010,7 +1034,7 @@ int main(int argc, char* argv[])
         insert_hole(holes, 600, 700, fd);
         print_hole_table(holes);
 
-          
+
         insert_hole(holes, 2400, 3500, fd);
         print_hole_table(holes);
 
@@ -1090,7 +1114,7 @@ int main(int argc, char* argv[])
           free(destination_directory);
           break;
         }
-        else if (number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
+        else if (!is_root_offset(my_superblock, destination_directory_offset) && number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
         {
           printf("Error input: the directory \"%s\" has reached its max capacity, and therefore it can't import new files.\n", destination_directory_path);
           free(destination_directory);
@@ -1104,7 +1128,7 @@ int main(int argc, char* argv[])
           get_nth_string(read_input, buffer, index);
 
           /* make sure that the new entity can be imported */
-          if (number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
+          if (!is_root_offset(my_superblock, destination_directory_offset) && number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
           {
             printf("Error input: the directory \"%s\" has reached its max capacity, therefore the entity \"%s\" and those after that can't be imported.\n", destination_directory_path, read_input);
             break;
@@ -1116,6 +1140,14 @@ int main(int argc, char* argv[])
           strcpy(temp_read_input, read_input);
           char last_entity_name[MAX_BUFFER_SIZE] = {0};
           extract_last_entity_from_path(temp_read_input, last_entity_name);
+
+          /* make sure that the limitations of the cfs are met */
+          if (strlen(last_entity_name) > fns - 1)
+          {
+            printf("Error input: the name \"%s\" exceeds the max number of characters that a file name can have: fns = %ld\n", last_entity_name, fns);
+            memset(read_input, 0, MAX_BUFFER_SIZE);
+            continue;
+          }
 
           /* make sure that no entity with the same name exists in the
              destination directory */
