@@ -607,27 +607,20 @@ int copy_from_linux_to_cfs(int fd, superblock* my_superblock, hole_map* holes, M
   /* if last block fits exactly */
   if (last_block_size == 0)
   {
-    last_block->bytes_used = size_for_data;
-    ssize_t read_value = read(linux_file_fd, last_block->data, size_for_data);
-    if (read_value == -1 || read_value != size_for_data)
-    {
-      perror("read() (last) error in copy_from_linux_to_cfs()");
-      free(last_block);
-      return 0;
-    }
+    last_block_size = size_for_data;
   }
-  /* if it does not fit exactly */
-  else
+
+  last_block->bytes_used = last_block_size;
+  ssize_t read_value = read(linux_file_fd, last_block->data, last_block_size);
+  if (read_value == -1 || read_value != last_block_size)
   {
-    last_block->bytes_used = last_block_size;
-    ssize_t read_value = read(linux_file_fd, last_block->data, last_block_size);
-    if (read_value == -1 || read_value != last_block_size)
-    {
-      perror("read() (last) error in copy_from_linux_to_cfs()");
-      free(last_block);
-      return 0;
-    }
+    perror("read() (last) error in copy_from_linux_to_cfs()");
+    free(last_block);
+    return 0;
   }
+
+
+
 
   /* write the last block in the cfs file */
   int retval = set_Block(last_block, fd, block_size, block_position);

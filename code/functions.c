@@ -1290,8 +1290,16 @@ int cfs_import(int fd, superblock* my_superblock, hole_map* holes, MDS* destinat
   /* check for errors */
   if (retval == -1)
   {
-    perror("stat()");
-    return 0;
+    if (errno == ENOENT)
+    {
+      printf("Error input: the given linux path \"%s\" does not exist.\n", linux_path_name);
+      return 1;
+    }
+    else
+    {
+      perror("stat()");
+      return 0;
+    }
   }
 
   switch (file_statistics.st_mode & S_IFMT)
