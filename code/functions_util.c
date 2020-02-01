@@ -88,7 +88,7 @@ int insert_pair(int fd, hole_map* holes, MDS* mds, char* insert_name, off_t inse
     MALLOC_OR_DIE_3(new_block, block_size);
 
     initialize_data_Block(new_block, block_size);
-    insert_pair_into_block(block, insert_name, insert_offset, fns);
+    insert_pair_into_block(new_block, insert_name, insert_offset, fns);
 
     retval = set_Block(new_block, fd, block_size, new_block_position);
     if (retval == 0)
@@ -578,7 +578,8 @@ int copy_from_linux_to_cfs(int fd, superblock* my_superblock, hole_map* holes, M
     /* check for errors */
     if (read_value == -1 || read_value != size_for_data)
     {
-      perror("read() error in copy_from_linux_to_cfs()");
+      perror("\nread() error in copy_from_linux_to_cfs()");
+      printf("read_value = %ld, size that should have been read = %ld\n", read_value, size_for_data);
       free(block);
       return 0;
     }
@@ -614,7 +615,8 @@ int copy_from_linux_to_cfs(int fd, superblock* my_superblock, hole_map* holes, M
   ssize_t read_value = read(linux_file_fd, last_block->data, last_block_size);
   if (read_value == -1 || read_value != last_block_size)
   {
-    perror("read() (last) error in copy_from_linux_to_cfs()");
+    perror("\nread() (last) error in copy_from_linux_to_cfs()");
+    printf("read_value = %ld, size that should have been read (last) = %ld\n", read_value, last_block_size);
     free(last_block);
     return 0;
   }

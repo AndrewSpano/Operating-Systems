@@ -1290,6 +1290,7 @@ int cfs_import(int fd, superblock* my_superblock, hole_map* holes, MDS* destinat
   size_t block_size = my_superblock->block_size;
   size_t fns = my_superblock->filename_size;
   size_t cfs = my_superblock->max_file_size;
+  uint mdfn = my_superblock->max_dir_file_number;
 
   /* variable that will store file statistics */
   struct stat file_statistics = {0};
@@ -1310,6 +1311,8 @@ int cfs_import(int fd, superblock* my_superblock, hole_map* holes, MDS* destinat
     }
   }
 
+
+  /* determine whether this entity to be imported is a file or a directory */
   switch (file_statistics.st_mode & S_IFMT)
   {
 
@@ -1317,8 +1320,142 @@ int cfs_import(int fd, superblock* my_superblock, hole_map* holes, MDS* destinat
     case S_IFDIR:
     {
 
+      /* temp array used to store the path of the linux directory */
+      char copy_linux_path_name[MAX_BUFFER_SIZE] = {0};
+      strcpy(copy_linux_path_name, linux_path_name);
+      /* array used to get the name if the linux directory */
+      char linux_name[MAX_BUFFER_SIZE] = {0};
+      extract_last_entity_from_path(copy_linux_path_name, linux_name);
 
-      printf("directory\n");
+
+      /* import the directory */
+      int retval = cfs_mkdir(fd, my_superblock, holes, destination_directory, destination_offset, linux_name);
+      if (!retval)
+      {
+        printf("Error in cfs_mkdir() when called from cfs_import().\n");
+        return 0;
+      }
+
+      /* get the position of the directory we just imported */
+      off_t imported_directory_offset = directory_get_offset(fd, destination_directory, block_size, fns, linux_name);
+      /* check for errors */
+      if (imported_directory_offset == (off_t) 0)
+      {
+        return 0;
+      }
+      else if (imported_directory_offset == (off_t) -1)
+      {
+        printf("Error in cfs_import(). This message should have never been printed because the insertion above worked, therefore the entity must exist. Congratulations, ELOUSES.\n");
+        return 0;
+      }
+
+      /* get the imported directory */
+      MDS* imported_directory = get_MDS(fd, imported_directory_offset);
+      if (imported_directory == NULL)
+      {
+        return 0;
+      }
+
+
+      /* pointer to directory */
+      DIR* linux_directory = NULL;
+      /* pointer to struct dirent */
+      struct dirent* entry = NULL;
+
+      /* open the linux directory */
+      linux_directory = opendir(linux_path_name);
+      /* check for errors */
+      if (linux_directory == NULL)
+      {
+        free(imported_directory);
+        if (errno == EACCES)
+        {
+          printf("Error: the linux directory \"%s\" has no permission to access its contents.\n", linux_path_name);
+          return 1;
+        }
+        else if (errno == ENOENT)
+        {
+          printf("Error: the linux directory \"%s\" does not exist, therefore it can't be imported.\n", linux_path_name);
+          return 1;
+        }
+
+        perror("opendir() error in cfs_import()");
+        return 0;
+      }
+
+
+      /* get the next entry of the directory */
+      entry = readdir(linux_directory);
+
+      /* while an entry exists */
+      while (entry != NULL)
+      {
+        /* get the name of the sub-entities of the directory */
+        char entry_name[MAX_BUFFER_SIZE] = {0};
+        strcpy(entry_name, entry->d_name);
+        /* contruct the path of the new entry from the current linux path */
+        strcpy(copy_linux_path_name, linux_path_name);
+        strcat(copy_linux_path_name, "/");
+        strcat(copy_linux_path_name, entry_name);
+
+        /* check for limitations of the cfs */
+        if (strlen(entry_name) > fns)
+        {
+          printf("The file \"%s\" has a name too big to fit in the cfs. The max characters for a file name is: fns = %ld\n", copy_linux_path_name, fns);
+          /* get the next entry */
+          entry = readdir(linux_directory);
+          continue;
+        }
+        if (number_of_sub_entities_in_directory(imported_directory, fns) == mdfn)
+        {
+          printf("The cfs directory \"%s\" has reached its max capacity in sub-entities. No more files can be stored.\n", linux_name);
+          break;
+        }
+
+        /* if the entry is not one of the directories "." and ".." */
+        if (strcmp(entry_name, ".") && strcmp(entry_name, ".."))
+        {
+          /* import the sub-entities in the imported directory */
+          retval = cfs_import(fd, my_superblock, holes, imported_directory, imported_directory_offset, copy_linux_path_name);
+          /* check for errors */
+          if (!retval)
+          {
+            free(imported_directory);
+            retval = closedir(linux_directory);
+            if (retval == -1)
+            {
+              perror("closedir() inside while loop in cfs_import()");
+            }
+            return 0;
+          }
+        }
+
+        /* get the next entry */
+        entry = readdir(linux_directory);
+      }
+
+
+      /* close the linux directory because we don't need it anymore */
+      retval = closedir(linux_directory);
+      /* check for errors */
+      if (retval == -1)
+      {
+        free(imported_directory);
+        perror("closedir() error in cfs_import()");
+        return 0;
+      }
+
+      /* set the imported directory in the cfs */
+      retval = set_MDS(imported_directory, fd, imported_directory_offset);
+      /* free up the allocated space */
+      free(imported_directory);
+      /* check for errors */
+      if (!retval)
+      {
+        return 0;
+      }
+
+
       break;
     }
 
@@ -1359,7 +1496,7 @@ int cfs_import(int fd, superblock* my_superblock, hole_map* holes, MDS* destinat
 
 
       /* create the file */
-      retval = cfs_touch(fd, my_superblock, holes, destination_directory, destination_offset, linux_file_name,  0, 0, 0);
+      retval = cfs_touch(fd, my_superblock, holes, destination_directory, destination_offset, linux_file_name,  (off_t) -1, 0, 0);
       if (!retval)
       {
         CLOSE_OR_DIE2(linux_file_fd);
@@ -1392,13 +1529,17 @@ int cfs_import(int fd, superblock* my_superblock, hole_map* holes, MDS* destinat
       }
 
 
-      /* copy the contents of the linux file to the corresponding cfs file */
-      retval = copy_from_linux_to_cfs(fd, my_superblock, holes, imported_file, linux_file_fd, linux_file_size);
-      /* check for errors */
-      if (!retval)
+      /* if there is anything to import <=> the file is not empty */
+      if (linux_file_size > 0)
       {
-        free(imported_file);
-        return 0;
+        /* copy the contents of the linux file to the corresponding cfs file */
+        retval = copy_from_linux_to_cfs(fd, my_superblock, holes, imported_file, linux_file_fd, linux_file_size);
+        /* check for errors */
+        if (!retval)
+        {
+          free(imported_file);
+          return 0;
+        }
       }
 
 
