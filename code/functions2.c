@@ -424,3 +424,76 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
 
   return 0;
 }
+
+
+
+
+
+int insert_hole(hole_map* holes, off_t my_start, off_t my_end, int fd)
+{
+  int i = 0;
+  for (; i < holes->current_hole_number; i++)
+  {    
+    //i+1-> current hole number must be < MAX HOLES
+    if (my_start > holes->holes_table[i].end && my_end < holes->holes_table[i+1].start) //new hole between holes
+    {
+      printf("new hole between holes\n");
+      if (holes->current_hole_number == MAX_HOLES)
+      {
+        printf("MAX HOLES\n");
+        return 0;
+      }
+      shift_holes_to_the_right(holes, i+1); //hole position?
+      holes->holes_table[i+1].start = my_start;
+      holes->holes_table[i+1].end = my_end;
+      holes->current_hole_number++;
+      set_hole_map(holes, fd);
+      return 1;
+    }
+    else if (holes->holes_table[i].end == my_start)
+    {
+      if (holes->holes_table[i+1].start == my_end) //merge holes
+      {
+        printf("merge holes\n");
+        holes->holes_table[i+1].start = holes->holes_table[i].start;
+        shift_holes_to_the_left(holes, i); //i+1
+        holes->current_hole_number--;
+        set_hole_map(holes, fd);
+        return 1;
+      }
+      else if (holes->holes_table[i+1].start > my_end) //extend hole
+      {
+        printf("extend1\n");
+        holes->holes_table[i].end = my_end;
+        set_hole_map(holes, fd);
+        return 1;
+      }
+      else
+      {
+        printf("return 0 prwto\n");
+        return 0;
+      }
+    }
+    else if (holes->holes_table[i].start == my_end) // extend hole
+    {
+      printf("extend2\n");
+      holes->holes_table[i].start = my_start;
+      set_hole_map(holes, fd);
+      return 1;
+    }
+    else if (my_start < holes->holes_table[i].start && my_end < holes->holes_table[i].start) //new hole at position 0
+    {
+      printf("new hole at position 0\n");
+      shift_holes_to_the_right(holes, i ); //hole position?
+      holes->holes_table[i].start = my_start;
+      holes->holes_table[i].end = my_end; 
+      holes->current_hole_number++;
+      set_hole_map(holes, fd);
+      return 1;
+    }
+
+
+  }//for
+  printf("den bike pouthena sad\n");
+  return 0;
+}
