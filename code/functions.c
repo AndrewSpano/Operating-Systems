@@ -404,14 +404,16 @@ int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, MDS* current_d
     return 1;
   }
 
-  /* create new file */
+  /* calculate some useful sizes and variables */
   size_t block_size = my_superblock->block_size;
   size_t fns = my_superblock->filename_size;
   uint total_entities = my_superblock->total_entities;
 
+  /* get info about the new file */
   size_t size_of_mds = sizeof(MDS);
   off_t mds_position = find_hole(holes, size_of_mds);
 
+  /* if no hole is found */
   if (mds_position == 0)
   {
     printf("No more holes are available. Make the hole map bigger in the next cfs file you make\n");
@@ -435,6 +437,7 @@ int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, MDS* current_d
     return 0;
   }
 
+  /* free up the used space */
   free(new_mds);
 
 
@@ -486,6 +489,7 @@ int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, MDS* current_d
   }
 
 
+  /* return 1 if everything goes smoothly */
   return 1;
 }
 
