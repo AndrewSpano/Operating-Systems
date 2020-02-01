@@ -1292,7 +1292,7 @@ int cfs_import(int fd, superblock* my_superblock, hole_map* holes, MDS* destinat
   size_t cfs = my_superblock->max_file_size;
 
   /* variable that will store file statistics */
-  struct stat file_statistics;
+  struct stat file_statistics = {0};
   /* get the file statistics */
   int retval = stat(linux_path_name, &file_statistics);
   /* check for errors */
