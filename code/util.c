@@ -307,6 +307,14 @@ int get_approval(char* source, char* destination, const char* operation)
 }
 
 
+/* returns non-zero value if the offset is the offset of the root directory;
+   else returns 0 */
+int is_root_offset(superblock* my_superblock, off_t offset)
+{
+  return my_superblock->root_directory == offset;
+}
+
+
 
 /* --------------------------------       GET FUNCTION PARAMETERS           ----------------------------------- */
 

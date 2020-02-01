@@ -261,8 +261,6 @@ int cfs_mkdir(int fd, superblock* my_superblock, hole_map* holes, MDS* current_d
     return 0;
   }
 
-
-
   /* create the struct */
   MDS* new_mds = NULL;
   MALLOC_OR_DIE_3(new_mds, sizeof(MDS));
@@ -1169,6 +1167,13 @@ int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
   /* array used to store the name that the link will have */
   char name_of_link[MAX_BUFFER_SIZE] = {0};
   extract_last_entity_from_path(output_file_path, name_of_link);
+  /* check that cfs limitations are met */
+  if (strlen(name_of_link) > fns - 1)
+  {
+    printf("Error input: the output file name (name of the link) \"%s\" exceeds the max number of characters that a filename can have.\n", name_of_link);
+    free(source);
+    return -1;
+  }
 
 
   /* get the offset of the directory that will contain the link */

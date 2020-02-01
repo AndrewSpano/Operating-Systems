@@ -135,118 +135,88 @@ int main(int argc, char* argv[])
 
         BREAK_IF_NO_FILE_OPEN(fd);
 
-        char* new_directory_name = malloc(fns * sizeof(char));
-        if (new_directory_name == NULL)
-        {
-          perror("malloc() error");
-          FREE_AND_CLOSE(my_superblock, holes, list, fd);
-
-          return EXIT_FAILURE;
-        }
-
-        if (!get_nth_string(new_directory_name, buffer, 2))
+        char read_input[MAX_BUFFER_SIZE] = {0};
+        if (!get_nth_string(read_input, buffer, 2))
         {
           printf("Error input, at least 1 new directory has to be given.\n");
-          free(new_directory_name);
-
           break;
         }
 
-        /* get the info of the current directory that we are in */
-        char* current_directory_name = malloc(fns * sizeof(char));
-        if (current_directory_name == NULL)
-        {
-          perror("malloc() error");
-          free(new_directory_name);
-          FREE_AND_CLOSE(my_superblock, holes, list, fd);
 
-          return EXIT_FAILURE;
-        }
-        off_t current_directory_offset = (off_t) 0;
-
-        /* get the location of the MDS of the directory */
-        int retval = Stack_List_Peek(list, &current_directory_name, &current_directory_offset);
-        if (retval != 1)
-        {
-          printf("Stack_List_Peek() error in main() before calling cfs_mkdir().\n");
-          free(new_directory_name);
-          free(current_directory_name);
-          FREE_AND_CLOSE(my_superblock, holes, list, fd);
-
-          return EXIT_FAILURE;
-        }
-
-        /* free the name of the current directory because we don't need it anymore */
-        free(current_directory_name);
-
-
-        /* get the current directory */
-        MDS* current_directory = get_MDS(fd, current_directory_offset);
-        if (current_directory == NULL)
-        {
-          printf("get_MDS() error in main() before calling cfs_mkdir().\n");
-          free(new_directory_name);
-          FREE_AND_CLOSE(my_superblock, holes, list, fd);
-
-          return EXIT_FAILURE;
-        }
-
-
-        int index = 2;
         /* for every directory name given */
-        int directory_exists = get_nth_string(new_directory_name, buffer, index);
+        int index = 2;
+        int directory_exists = get_nth_string(read_input, buffer, index);
         while (directory_exists)
         {
-          off_t directory_offset = directory_get_offset(fd, current_directory, block_size, fns, new_directory_name);
-          if (directory_offset == (off_t) 0)
+          /* get the name of the new directory */
+          char new_directory_name[MAX_BUFFER_SIZE] = {0};
+          extract_last_entity_from_path(read_input, new_directory_name);
+
+          /* check that the limitations of the cfs are met */
+          if (strlen(new_directory_name) > fns - 1)
           {
-            printf("Unexpected error occured in directory_get_offset(). Exiting..\n");
-            free(current_directory);
-            free(new_directory_name);
-            FREE_AND_CLOSE(my_superblock, holes, list, fd);
-          }
-          else if (directory_offset != (off_t) -1)
-          {
-            printf("Cannot create directory '%s' because an entity with the same name already exists in the current directory.\n", new_directory_name);
+            printf("Error input: the name \"%s\" exceeds the max number of characters that a file name can have: fns = %ld\n", new_directory_name, fns);
             index++;
-            directory_exists = get_nth_string(new_directory_name, buffer, index);
-            if (directory_exists)
-            {
-              continue;
-            }
-            else
-            {
-              break;
-            }
+            directory_exists = get_nth_string(read_input, buffer, index);
+            continue;
           }
 
-
-          /* determine whether it can host a new sub-entity */
-          if (!is_in_Root(list) && number_of_sub_entities_in_directory(current_directory, fns) == max_number_of_files)
+          /* get the offset of the directory that will host the new directory */
+          off_t destination_directory_offset = get_offset_from_path(fd, my_superblock, list, read_input);
+          /* check for errors */
+          if (destination_directory_offset == (off_t) 0)
           {
-            printf("Can't create the directory '%s' because the current directory has already reached max number of sub-entites.\n", new_directory_name);
-            break;
-          }
-
-          /* if we reach here it means that we can create a new directory inside
-             the current one */
-          retval = cfs_mkdir(fd, my_superblock, holes, current_directory, current_directory_offset, new_directory_name);
-          if (!retval)
-          {
-            printf("Unexpected error occured in cfs_mkdir(). Exiting..\n");
-            free(current_directory);
-            free(new_directory_name);
             FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+          else if (destination_directory_offset == (off_t) -1)
+          {
+            index++;
+            directory_exists = get_nth_string(read_input, buffer, index);
+            continue;
+          }
 
+          /* get the destination directory */
+          MDS* destination_directory = get_MDS(fd, destination_directory_offset);
+          /* check for errors */
+          if (destination_directory == NULL)
+          {
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
             return EXIT_FAILURE;
           }
 
-          index++;
-          directory_exists = get_nth_string(new_directory_name, buffer, index);
-        }
+          /* check that the limitations of the cfs are met */
+          if (!is_root_offset(my_superblock, destination_directory_offset) && number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
+          {
+            if (read_input[0] == 0)
+            {
+              printf("Can't create the directory \"%s\" because the current directory has already reached max number of sub-entites.\n", new_directory_name);
+            }
+            else
+            {
+              printf("Can't create the directory \"%s\" because the directory \"%s\" has already reached max number of sub-entites.\n", new_directory_name, read_input);
+            }
+            index++;
+            directory_exists = get_nth_string(read_input, buffer, index);
+            continue;
+          }
 
-        free(current_directory);
-        free(new_directory_name);
+
+          /* create the new directory */
+          int retval = cfs_mkdir(fd, my_superblock, holes, destination_directory, destination_directory_offset, new_directory_name);
+          /* free up the allocated space */
+          free(destination_directory);
+          /* check for errors */
+          if (!retval)
+          {
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+
+          /* read the next entry */
+          index++;
+          directory_exists = get_nth_string(read_input, buffer, index);
+        }
 
         break;
       }
@@ -738,6 +708,12 @@ int main(int argc, char* argv[])
            the same name already exists */
         char destination_file_name[MAX_BUFFER_SIZE] = {0};
         extract_last_entity_from_path(destination_file_path, destination_file_name);
+        /* check that cfs limitations are met */
+        if (strlen(destination_file_name) > fns - 1)
+        {
+          printf("Error input: the output file name \"%s\" exceeds the max number of characters that a filename can have.\n", destination_file_name);
+          break;
+        }
 
         Stack_List* destination_path_list = copy_List(list);
         if (destination_path_list == NULL)
