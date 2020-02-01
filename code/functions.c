@@ -1399,7 +1399,7 @@ int cfs_import(int fd, superblock* my_superblock, hole_map* holes, MDS* destinat
         strcat(copy_linux_path_name, entry_name);
 
         /* check for limitations of the cfs */
-        if (strlen(entry_name) > fns)
+        if (strlen(entry_name) > fns - 1)
         {
           printf("The file \"%s\" has a name too big to fit in the cfs. The max characters for a file name is: fns = %ld\n", copy_linux_path_name, fns);
           /* get the next entry */
