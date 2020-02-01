@@ -1005,6 +1005,129 @@ int main(int argc, char* argv[])
 
       case 12:
       {
+        BREAK_IF_NO_FILE_OPEN(fd);
+
+        /* array used to read the input of the user */
+        char read_input[MAX_BUFFER_SIZE] = {0};
+
+        /* check for correct input */
+        int exists = get_nth_string(read_input, buffer, 2);
+        if (!exists)
+        {
+          printf("Error input: you must give at least one source file and one destination directory.\n");
+          break;
+        }
+
+        /* check for correct input */
+        exists = get_nth_string(read_input, buffer, 3);
+        if (!exists)
+        {
+          printf("Error input: you must give one destination directory.\n");
+          break;
+        }
+
+
+        /* count the number of sources and get the destination directory */
+        int index = 2;
+        exists = get_nth_string(read_input, buffer, index);
+        while (exists)
+        {
+          index++;
+          exists = get_nth_string(read_input, buffer, index);
+        }
+
+        /* counter used later */
+        uint total_sources = index - 3;
+
+        /* get the path of the destination directory */
+        char destination_directory_path[MAX_BUFFER_SIZE] = {0};
+        get_nth_string(destination_directory_path, buffer, index - 1);
+
+        /* get the offset of the destination directory */
+        off_t destination_directory_offset = get_offset_from_path(fd, my_superblock, list, destination_directory_path);
+        if (destination_directory_offset == (off_t) 0)
+        {
+          break;
+        }
+
+        /* get the destination directory */
+        MDS* destination_directory = get_MDS(fd, destination_directory_offset);
+        /* check for errors */
+        if (destination_directory == NULL)
+        {
+          break;
+        }
+        else if (destination_directory->type != DIRECTORY)
+        {
+          printf("Error input: the destination must be a directory.\n");
+          free(destination_directory);
+          break;
+        }
+        else if (number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
+        {
+          printf("Error input: the directory \"%s\" has reached its max capacity, and therefore it can't import new files.\n", destination_directory_path);
+          free(destination_directory);
+          break;
+        }
+
+
+        for (index = 2; index < total_sources + 2; index++)
+        {
+          /* read the source to be imported */
+          get_nth_string(read_input, buffer, index);
+
+          /* make sure that the new entity can be imported */
+          if (number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files)
+          {
+            printf("Error input: the directory \"%s\" has reached its max capacity, therefore the entity \"%s\" and those after that can't be imported.\n", destination_directory_path, read_input);
+            break;
+          }
+
+          /* get the name of the entity in order to check if an entity with the
+             same name in the destination directory exists */
+          char temp_read_input[MAX_BUFFER_SIZE] = {0};
+          strcpy(temp_read_input, read_input);
+          char last_entity_name[MAX_BUFFER_SIZE] = {0};
+          extract_last_entity_from_path(temp_read_input, last_entity_name);
+
+          /* make sure that no entity with the same name exists in the
+             destination directory */
+          off_t check_if_exists = directory_get_offset(fd, destination_directory, block_size, fns, last_entity_name);
+          if (check_if_exists == (off_t) 0)
+          {
+            free(destination_directory);
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+          else if (check_if_exists != (off_t) -1)
+          {
+            if (read_input[0] != 0)
+            {
+              printf("Error input: entity named \"%s\" already exists in directory \"%s\".\n", last_entity_name, read_input);
+            }
+            else
+            {
+              printf("Error input: entity named \"%s\" already exists in current directory.\n", last_entity_name);
+            }
+            memset(read_input, 0, MAX_BUFFER_SIZE);
+            continue;
+          }
+
+          int retval = cfs_import(fd, my_superblock, holes, destination_directory, destination_directory_offset, read_input);
+          if (!retval)
+          {
+            printf("Something unexpected happened in cfs_import() when called from main. Exiting..\n");
+            free(destination_directory);
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+
+          memset(read_input, 0, MAX_BUFFER_SIZE);
+        }
+
+
+        /* free up the allocated space */
+        free(destination_directory);
 
         break;
       }

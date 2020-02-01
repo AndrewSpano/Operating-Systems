@@ -10,6 +10,20 @@
         })
 
 
+
+/* same as above, just returns 0 instead of -1 */
+#define CLOSE_OR_DIE2(fd)                              \
+        ({                                             \
+          int ret = close(fd);                         \
+          if (ret == -1)                               \
+          {                                            \
+            perror("close() error");                   \
+            return 0;                                  \
+          }                                            \
+        })
+
+
+
 /* used free allocated space and exit the program */
 #define FREE_AND_CLOSE(my_superblock, holes, list, fd)           \
         ({                                                       \

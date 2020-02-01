@@ -4,6 +4,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #include "functions.h"
 #include "functions_util.h"
@@ -1270,6 +1273,176 @@ int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
   /* return 1 if everything goes smoothly */
   return 1;
 }
+
+
+
+int cfs_import(int fd, superblock* my_superblock, hole_map* holes, MDS* destination_directory, off_t destination_offset, char* linux_path_name)
+{
+  /* get some important sizes */
+  size_t block_size = my_superblock->block_size;
+  size_t fns = my_superblock->filename_size;
+  size_t cfs = my_superblock->max_file_size;
+
+  /* variable that will store file statistics */
+  struct stat file_statistics;
+  /* get the file statistics */
+  int retval = stat(linux_path_name, &file_statistics);
+  /* check for errors */
+  if (retval == -1)
+  {
+    perror("stat()");
+    return 0;
+  }
+
+  switch (file_statistics.st_mode & S_IFMT)
+  {
+
+    /* if the entity is a directory */
+    case S_IFDIR:
+    {
+
+
+      printf("directory\n");
+      break;
+    }
+
+    /* if the entity if a file */
+    case S_IFREG:
+    {
+
+      /* check the size of the file to be imported */
+      size_t linux_file_size = file_statistics.st_size;
+      if (linux_file_size > cfs)
+      {
+        printf("Linux file \"%s\" is too big to be imported in the cfs. Its size is %ld, and the max size that a file can have in the cfs is: %ld.\n", linux_path_name, linux_file_size, cfs);
+        return 1;
+      }
+
+
+      /* open the linux FS file */
+      int linux_file_fd = open(linux_path_name, O_RDONLY, READ_WRITE_USER_GROUP_PERMS);
+      /* check for errors */
+      if (linux_file_fd == -1)
+      {
+        if (errno == ENOENT)
+        {
+          printf("Error input: the linux file \"%s\" does not exist.\n", linux_path_name);
+          return 1;
+        }
+        else
+        {
+          perror("open() error in cfs_import()");
+          return 0;
+        }
+      }
+
+
+      /* array of charact used to store the name of the file to be created */
+      char linux_file_name[MAX_BUFFER_SIZE] = {0};
+      extract_last_entity_from_path(linux_path_name, linux_file_name);
+
+
+      /* create the file */
+      retval = cfs_touch(fd, my_superblock, holes, destination_directory, destination_offset, linux_file_name,  0, 0, 0);
+      if (!retval)
+      {
+        CLOSE_OR_DIE2(linux_file_fd);
+        return 0;
+      }
+
+
+      /* get its offset */
+      off_t imported_file_offset = directory_get_offset(fd, destination_directory, block_size, fns, linux_file_name);
+      if (imported_file_offset == (off_t) 0)
+      {
+        CLOSE_OR_DIE2(linux_file_fd);
+        return 0;
+      }
+      else if (imported_file_offset == (off_t) -1)
+      {
+        printf("Error, this message should have never printed, because you just a created a file, searched its offset and did not find it, in cfs_import (for files). Congratulations, ELOUSES.\n");
+        CLOSE_OR_DIE2(linux_file_fd);
+        return 0;
+      }
+
+
+      /* get the imported file */
+      MDS* imported_file = get_MDS(fd, imported_file_offset);
+      /* check for errors */
+      if (imported_file == NULL)
+      {
+        CLOSE_OR_DIE2(linux_file_fd);
+        return 0;
+      }
+
+
+      /* copy the contents of the linux file to the corresponding cfs file */
+      retval = copy_from_linux_to_cfs(fd, my_superblock, holes, imported_file, linux_file_fd, linux_file_size);
+      /* check for errors */
+      if (!retval)
+      {
+        free(imported_file);
+        return 0;
+      }
+
+
+      /* write the newly imported file to the cfs */
+      retval = set_MDS(imported_file, fd, imported_file_offset);
+      free(imported_file);
+      /* check for errors */
+      if (!retval)
+      {
+        return 0;
+      }
+
+
+      /* inform the superblock */
+      my_superblock->current_size += sizeof(MDS);
+
+
+      /* close the linux file */
+      CLOSE_OR_DIE2(linux_file_fd);
+
+      break;
+    }
+
+    /* if the entity is something else */
+    default:
+    {
+      printf("Linux entity \"%s\" is neither a directory nor a file, therefore it can't be imported in the cfs.\n", linux_path_name);
+      break;
+    }
+
+  }
+
+
+
+  /* update the superblock */
+  retval = set_superblock(my_superblock, fd);
+  if (!retval)
+  {
+    return 0;
+  }
+
+  /* update the hole map */
+  retval = set_hole_map(holes, fd);
+  if (!retval)
+  {
+    return 0;
+  }
+
+  /* update the destination directory */
+  retval = set_MDS(destination_directory, fd, destination_offset);
+  if (!retval)
+  {
+    return 0;
+  }
+
+  /* return 1 if everything goes smoothly */
+  return 1;
+}
+
+
 
 
 

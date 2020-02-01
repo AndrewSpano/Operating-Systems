@@ -3,6 +3,7 @@
 
 #define MAX_HOLES 1000
 #define PERMS 0777
+#define _XOPEN_SOURCE 700
 #define READ_WRITE_USER_GROUP_PERMS 0660
 
 

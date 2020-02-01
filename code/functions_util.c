@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "functions_util.h"
 #include "functions.h"
@@ -390,7 +392,6 @@ off_t directory_get_offset(int fd, MDS* directory, size_t block_size, size_t fns
 }
 
 
-
 /* returns 1 if a name exists in a directory, -1 if it doesn't and 0 if an error
    occurs in the process */
 int name_exists_in_directory(int fd, MDS* directory, size_t block_size, size_t fns, char* target_name)
@@ -435,9 +436,6 @@ int name_exists_in_directory(int fd, MDS* directory, size_t block_size, size_t f
   /* return -1 if no same name is found after scanning all the directory blocks */
   return -1;
 }
-
-
-
 
 
 /* return the offset of the last entity from a given path */
@@ -539,4 +537,115 @@ off_t get_offset_from_path(int fd, superblock* my_superblock, Stack_List* list, 
 
 
   return destination_file_offset;
+}
+
+
+/* copy the information from a linux file to a cfs file */
+int copy_from_linux_to_cfs(int fd, superblock* my_superblock, hole_map* holes, MDS* imported_file, int linux_file_fd, size_t linux_file_size)
+{
+  /* important sizes */
+  size_t block_size = my_superblock->block_size;
+  size_t size_for_data = block_size - sizeof(Block);
+  /* variables used later */
+  uint number_of_blocks = linux_file_size / size_for_data;
+  size_t last_block_size = linux_file_size % size_for_data;
+  if (last_block_size > 0)
+  {
+    number_of_blocks++;
+  }
+
+  /* find where to place the first block */
+  off_t block_position = find_hole(holes, block_size);
+  imported_file->first_block = block_position;
+
+  /* write in the block where the next block will be placed */
+  off_t new_block_position = block_position;
+
+  int i = 0;
+  /* copy the first n - 1 blocks, which all will be full */
+  for (; i < number_of_blocks - 1; i++)
+  {
+    /* get a block */
+    Block* block = NULL;
+    MALLOC_OR_DIE_3(block, block_size);
+    initialize_data_Block(block, block_size);
+
+    /* assign its values */
+    new_block_position = find_hole(holes, block_size);
+    block->next_block = new_block_position;
+    block->bytes_used = size_for_data;
+    ssize_t read_value = read(linux_file_fd, block->data, size_for_data);
+    /* check for errors */
+    if (read_value == -1 || read_value != size_for_data)
+    {
+      perror("read() error in copy_from_linux_to_cfs()");
+      free(block);
+      return 0;
+    }
+
+    /* write the block in the cfs */
+    int retval = set_Block(block, fd, block_size, block_position);
+    /* free up the allocated memory */
+    free(block);
+    /* check for errors */
+    if (!retval)
+    {
+      return 0;
+    }
+
+    /* save the position of the new block to be created */
+    block_position = new_block_position;
+  }
+
+  /* copy the last block, which may or may not contain less information */
+  Block* last_block = NULL;
+  MALLOC_OR_DIE_3(last_block, block_size);
+  initialize_data_Block(last_block, block_size);
+
+  last_block->next_block = 0;
+
+  /* if last block fits exactly */
+  if (last_block_size == 0)
+  {
+    last_block->bytes_used = size_for_data;
+    ssize_t read_value = read(linux_file_fd, last_block->data, size_for_data);
+    if (read_value == -1 || read_value != size_for_data)
+    {
+      perror("read() (last) error in copy_from_linux_to_cfs()");
+      free(last_block);
+      return 0;
+    }
+  }
+  /* if it does not fit exactly */
+  else
+  {
+    last_block->bytes_used = last_block_size;
+    ssize_t read_value = read(linux_file_fd, last_block->data, last_block_size);
+    if (read_value == -1 || read_value != last_block_size)
+    {
+      perror("read() (last) error in copy_from_linux_to_cfs()");
+      free(last_block);
+      return 0;
+    }
+  }
+
+  /* write the last block in the cfs file */
+  int retval = set_Block(last_block, fd, block_size, block_position);
+  /* free up the allocated memory */
+  free(last_block);
+  /* check for errors */
+  if (!retval)
+  {
+    return 0;
+  }
+
+
+  /* inform the imported file */
+  imported_file->size = linux_file_size;
+  imported_file->blocks_using = number_of_blocks;
+
+  /* inform the superblock */
+  my_superblock->current_size += block_size * number_of_blocks;
+
+  return 1;
 }
