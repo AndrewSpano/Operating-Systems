@@ -1002,6 +1002,48 @@ int main(int argc, char* argv[])
 
       case 10:
       {
+         print_hole_table(holes);
+        holes->holes_table[0].start = 100; 
+        holes->holes_table[0].end = 200;
+        holes->current_hole_number = 1;
+
+        holes->holes_table[1].start = 300; 
+        holes->holes_table[1].end = 400; 
+        holes->current_hole_number++;
+
+        holes->holes_table[2].start = 700; 
+        holes->holes_table[2].end = 1000; 
+        holes->current_hole_number++;
+        
+        holes->holes_table[3].start = 1300; 
+        holes->holes_table[3].end = 1400; 
+        holes->current_hole_number++;
+        
+        holes->holes_table[4].start = 3500; 
+        holes->holes_table[4].end = 0; 
+        holes->current_hole_number++;
+        
+        print_hole_table(holes);
+
+        insert_hole(holes, 0, 50, fd);
+        print_hole_table(holes);
+
+        insert_hole(holes, 200, 300, fd);
+        print_hole_table(holes);
+
+        insert_hole(holes, 600, 700, fd);
+        print_hole_table(holes);
+
+          
+        insert_hole(holes, 2400, 3500, fd);
+        print_hole_table(holes);
+
+        insert_hole(holes, 400, 450, fd);
+        print_hole_table(holes);
+
+        insert_hole(holes, 2100, 2300, fd);
+        print_hole_table(holes);
+
 
         break;
       }
