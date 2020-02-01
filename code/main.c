@@ -565,6 +565,7 @@ int main(int argc, char* argv[])
 
         /* get the destination file */
         MDS* destination_directory = get_MDS(fd, destination_directory_offset);
+        /* check for errors */
         if (destination_directory == NULL)
         {
           break;
@@ -614,9 +615,11 @@ int main(int argc, char* argv[])
           {
             continue;
           }
-          else if (entity_offset == my_superblock->root_directory)
+          else if (is_root_offset(my_superblock, entity_offset))
           {
             printf("Error input: /root directory is the only directory that can't be copied. Therefore the entity \"%s\" can't be copied.\n", read_input);
+            /* reset the array used to read the user input */
+            memset(read_input, 0, MAX_BUFFER_SIZE);
             continue;
           }
 
@@ -629,13 +632,28 @@ int main(int argc, char* argv[])
           extract_last_entity_from_path(temp_read_input, last_entity_name);
 
 
+          /* get the entitys actual name if "." or ".." was given as the last
+             pathname */
+          if (strcmp(last_entity_name, ".") || strcmp(last_entity_name, ".."))
+          {
+            /* get the directory's actual name in the array last_entity_name */
+            int retval = get_legit_name_from_path(fd, my_superblock, list, read_input, last_entity_name);
+            if (!retval)
+            {
+              printf("Error: operation get_legit_name_from_path() failed when called from main() in case 7. It should never fail. Exiting..\n");
+              free(destination_directory);
+              FREE_AND_CLOSE(my_superblock, holes, list, fd);
+              return EXIT_FAILURE;
+            }
+          }
+
+
           /* check for existance of entity with same name */
           off_t check_if_exists = directory_get_offset(fd, destination_directory, block_size, fns, last_entity_name);
           if (check_if_exists == (off_t) 0)
           {
             free(destination_directory);
             FREE_AND_CLOSE(my_superblock, holes, list, fd);
-
             return EXIT_FAILURE;
           }
           else if (check_if_exists != (off_t) -1)
@@ -648,6 +666,8 @@ int main(int argc, char* argv[])
             {
               printf("Error input: entity named \"%s\" already exists in current directory.\n", last_entity_name);
             }
+            /* reset the array used to read the user input */
+            memset(read_input, 0, MAX_BUFFER_SIZE);
             continue;
           }
 
@@ -657,6 +677,8 @@ int main(int argc, char* argv[])
           /* check for errors */
           if (entity == 0)
           {
+            /* reset the array used to read the user input */
+            memset(read_input, 0, MAX_BUFFER_SIZE);
             continue;
           }
 
@@ -1241,7 +1263,7 @@ int main(int argc, char* argv[])
         char wrong_input[MAX_BUFFER_SIZE] = {0};
         if (get_nth_string(wrong_input, buffer, 1))
         {
-          printf("Unknown command: '%s'\n", wrong_input);
+          printf("Unknown command: \"%s\".\n", wrong_input);
         }
 
         break;

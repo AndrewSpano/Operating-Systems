@@ -482,10 +482,6 @@ off_t get_offset_from_path(int fd, superblock* my_superblock, Stack_List* list, 
       Stack_List_Destroy(&file_path_list);
       return (off_t) 0;
     }
-    else if (retval == -1)
-    {
-      return (off_t) 0;
-    }
   }
 
   /* get the offset of the current directory, in order to get the directory */
@@ -537,6 +533,44 @@ off_t get_offset_from_path(int fd, superblock* my_superblock, Stack_List* list, 
 
 
   return destination_file_offset;
+}
+
+
+/* stores the actual name of a directory (not "." or "..") in the variables legit_name.
+   Returns 1 upon success; else returns 0 */
+int get_legit_name_from_path(int fd, superblock* my_superblock, Stack_List* list, char original_path[], char* legit_name)
+{
+  /* create a new list to use cfs_cd on it */
+  Stack_List* directory_path_list = copy_List(list);
+  if (directory_path_list == NULL)
+  {
+    return 0;
+  }
+
+  /* original_path will always be a directory, so go to that directory */
+  int retval = cfs_cd(fd, my_superblock, directory_path_list, original_path);
+  /* check if the operation failed */
+  if (!retval)
+  {
+    Stack_List_Destroy(&directory_path_list);
+    return 0;
+  }
+
+  /* get the actual name */
+  off_t spam_offset = 0;
+  retval = Stack_List_Peek(directory_path_list, &legit_name, &spam_offset);
+  if (!retval)
+  {
+    Stack_List_Destroy(&directory_path_list);
+    return 0;
+  }
+
+
+  /* free up the allocated memory */
+  Stack_List_Destroy(&directory_path_list);
+
+  /* we got the name inside the variable legit_name, so we are finished */
+  return 1;
 }
 
 
