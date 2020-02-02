@@ -87,40 +87,54 @@ int main(int argc, char* argv[])
     {
       case 1:
       {
+        /* get the name of the new cfs file to be worked with */
         char new_cfs_filename[MAX_CFS_FILENAME_SIZE] = {0};
+        /* check for correct input */
         if (!get_nth_string(new_cfs_filename, buffer, 2))
         {
-          printf("Error input, the name of the cfs file to work with has to be given.\n");
+          printf("Error input: the name of the cfs file to work with has to be given.\n");
           break;
         }
 
+        /* initialize variables for later */
         superblock* new_superblock = NULL;
         hole_map* new_holes = NULL;
         Stack_List* new_list = NULL;
 
+        /* try to work with a new cfs file */
         int new_fd = cfs_workwith(new_cfs_filename, &new_superblock, &new_holes, &new_list);
+        /* check for errors */
         if (new_fd == -1)
+        {
+          FREE_AND_CLOSE(my_superblock, holes, list, fd);
+          return EXIT_FAILURE;
+        }
+        else if (new_fd == 0)
         {
           printf("Error with the given cfs filename.\n");
           break;
         }
 
+        /* if we get here it means that the above operation succeded, so proceed */
         free_mem(&my_superblock, &holes, &list);
 
+        /* give new values */
         my_superblock = new_superblock;
         holes = new_holes;
         list = new_list;
 
+        /* also give new values */
         block_size = my_superblock->block_size;
         fns = my_superblock->filename_size;
         max_entity_size = my_superblock->max_file_size;
         max_number_of_files = my_superblock->max_dir_file_number;
         strcpy(cfs_filename, new_cfs_filename);
 
-        /* close previous open file */
+        /* close previous open cfs file, if it existed */
         if (fd != -1)
         {
           int ret = close(fd);
+          /* check for errors */
           if (ret == -1)
           {
             perror("Unexpected close() error when closing the previous cfs file. Exiting..");
@@ -130,6 +144,7 @@ int main(int argc, char* argv[])
           }
         }
 
+        /* set the fd of the current working cfs file */
         fd = new_fd;
 
         break;
@@ -1414,25 +1429,30 @@ int main(int argc, char* argv[])
 
       case 14:
       {
+        /* initialize temporarily the important variables */
         size_t bs = 0;
         size_t fns = 0;
         size_t cfs = 0;
         uint mdfn = 0;
 
+        /* get the name of the new cfs file */
         char new_cfs_filename[MAX_CFS_FILENAME_SIZE] = {0};
 
+        /* get the values, if any are given */
         int retval = get_cfs_create_parameters(buffer, &bs, &fns, &cfs, &mdfn, new_cfs_filename);
+        /* check for errors */
         if (!retval)
         {
-          // printf("Error while reading the parameters of cfs_create.\n");
           break;
         }
 
+        /* create the new cfs file */
         retval = cfs_create(new_cfs_filename, bs, fns, cfs, mdfn);
+        /* check for errors */
         if (retval == -1)
         {
-          printf("Error in cfs_create().\n");
-          break;
+          FREE_AND_CLOSE(my_superblock, holes, list, fd);
+          return EXIT_FAILURE;
         }
 
         break;
@@ -1440,14 +1460,17 @@ int main(int argc, char* argv[])
 
       case 15:
       {
-        printf("\nTerminating the program..\n");
+        /* terminate the program */
+        printf("\nTerminating the program..\n\n");
 
         break;
       }
 
       default:
       {
+        /* handle wrong input */
         char wrong_input[MAX_BUFFER_SIZE] = {0};
+        /* if an unknown string was given */
         if (get_nth_string(wrong_input, buffer, 1))
         {
           printf("Unknown command: \"%s\".\n", wrong_input);

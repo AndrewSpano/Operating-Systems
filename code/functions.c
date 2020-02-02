@@ -20,13 +20,13 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
   /* cfs directories have to able to at least contain the ./ and ../
      directories, therefore the data block size has to at least as big as the
      space that is needed to store the information for these 2 directories error oc*/
-  if (bs < 2 * (fns + sizeof(off_t)))
+  if (bs - sizeof(Block) < 2 * (fns + sizeof(off_t)))
   {
-    printf("block size if too small: %lu, or filename_size is too big: %lu\n \
-            A directory data block can't contain the basic information for the ./ and ../ directories.\n", bs, fns);
-    return -1;
+    printf("block size if too small: %lu, or filename_size is too big: %lu\nA directory data block can't contain the basic information for the ./ and ../ directories.\n", bs, fns);
+    return 0;
   }
 
+  /* create the new cfs file */
   int fd = open(cfs_filename, O_CREAT | O_RDWR | O_EXCL, S_IRUSR | S_IWUSR);
 
   /* check is an error occured */
@@ -36,16 +36,15 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
     if (errno == EEXIST)
     {
       printf("File already exists, give another name for the cfs file.\n");
+      return 0;
     }
     /* some other error occured */
     else
     {
       perror("Error occured");
+      return -1;
     }
-
-    return -1;
   }
-
 
 
   /* calculate the size of every struct */
@@ -135,6 +134,7 @@ int cfs_create(char* cfs_filename, size_t bs, size_t fns, size_t cfs, uint mdfn)
   free(my_superblock);
   free(holes);
 
+  /* close the cfs file because we are not working with it */
   CLOSE_OR_DIE(fd);
 
   return 1;
@@ -146,18 +146,19 @@ int cfs_workwith(char* cfs_filename, superblock** my_superblock, hole_map** hole
 {
   /* open file just for reading to see if it exists */
   int fd = open(cfs_filename, O_RDONLY, READ_WRITE_USER_GROUP_PERMS);
+  /* check for errors */
   if (fd == -1)
   {
     if (errno == ENOENT)
     {
-      printf("cfs file: %s does not exist.\n", cfs_filename);
+      printf("Error input: cfs file \"%s\" does not exist.\n", cfs_filename);
+      return 0;
     }
     else
     {
       perror("open() error in cfs_workwith()");
+      return -1;
     }
-
-    return -1;
   }
 
   /* close the file opened only for reading */
@@ -166,6 +167,7 @@ int cfs_workwith(char* cfs_filename, superblock** my_superblock, hole_map** hole
 
   /* now open it for both reading and writing, to work with it */
   fd = open(cfs_filename, O_RDWR | O_EXCL, S_IRUSR | S_IWUSR);
+  /* check for errors */
   if (fd == -1)
   {
     perror("open() error in correct opening of cfs_workwith()");
@@ -177,22 +179,22 @@ int cfs_workwith(char* cfs_filename, superblock** my_superblock, hole_map** hole
   /* get the superblock so that we don't have to read it from the file every
      time we use a cfs_function */
   *my_superblock = get_superblock(fd);
+  /* check for errors */
   if (*my_superblock == NULL)
   {
     perror("get_superblock() returned NULL in cfs_workwith()");
     CLOSE_OR_DIE(fd);
-
     return -1;
   }
 
   /* same as above, just for the holes map */
   *holes = get_hole_map(fd);
+  /* check for errors */
   if (*holes == NULL)
   {
     perror("get_hole_map() returned NULL in cfs_workwith()");
     free(my_superblock);
     CLOSE_OR_DIE(fd);
-
     return -1;
   }
 
@@ -205,7 +207,6 @@ int cfs_workwith(char* cfs_filename, superblock** my_superblock, hole_map** hole
     free(my_superblock);
     free(holes);
     CLOSE_OR_DIE(fd);
-
     return -1;
   }
 
@@ -218,7 +219,6 @@ int cfs_workwith(char* cfs_filename, superblock** my_superblock, hole_map** hole
     free(holes);
     Stack_List_Destroy(list);
     CLOSE_OR_DIE(fd);
-
     return -1;
   }
   strcpy(root_name, "root");
@@ -228,18 +228,18 @@ int cfs_workwith(char* cfs_filename, superblock** my_superblock, hole_map** hole
 
   /* push it into the stack list, while also checking for any failure */
   int ret = Stack_List_Push(*list, root_name, root_position);
+  /* check for errors */
   if (ret == -1)
   {
     /* pushing failed for some reason, so free() the allocated memory and exit */
     Stack_List_Destroy(list);
     perror("Unexpected error");
     CLOSE_OR_DIE(fd);
-
     return -1;
   }
 
-
-
+  /* return the appropriate file descriptor of the cfs to be worked with after
+     everything succeded */
   return fd;
 }
 
@@ -497,6 +497,7 @@ int cfs_touch(int fd, superblock* my_superblock, hole_map* holes, MDS* current_d
 
 int cfs_pwd(int fd, superblock* my_superblock, Stack_List* list)
 {
+  /* just call a function that prints the current working directory */
   Stack_List_Print_Path(list);
   return 1;
 }
@@ -883,6 +884,7 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
           {
             free(directory_data_block);
             free(copy_directory);
+            free(new_source);
             return 0;
           }
 
@@ -899,9 +901,9 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
         free(directory_data_block);
       }
 
-      /* free with the copy directory because we finished with it */
       /* update the destination directory */
       retval = set_MDS(copy_directory, fd, copy_directory_offset);
+      /* free with the copy directory because we finished with it */
       free(copy_directory);
       if (!retval)
       {
@@ -1631,6 +1633,87 @@ int cfs_export(int fd, superblock* my_superblock, MDS* source, char* linux_path_
     /* if the entity to be exported is a directory */
     case DIRECTORY:
     {
+      /* create the corresponding directory */
+      int status = mkdir(linux_path_name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+      /* check for errors */
+      if (status == -1)
+      {
+        perror("mkdir() error when called from cfs_export()");
+        return 0;
+      }
+
+      /* initialize useful variables */
+      size_t size_of_pair = fns + sizeof(off_t);
+
+
+      /* get the position of the data blocks of the source directory */
+      off_t directory_data_block_position = source->first_block;
+      /* iterate through all the directory data blocks */
+      while (directory_data_block_position != (off_t) 0)
+      {
+        /* get the directory data block */
+        Block* directory_data_block = get_Block(fd, block_size, directory_data_block_position);
+        /* check for errors */
+        DIE_IF_NULL(directory_data_block);
+
+        /* pointer to the names that the directory data block contains */
+        char* name = (char *) directory_data_block->data;
+
+        /* pretty much self self explanatory */
+        uint number_of_pairs = directory_data_block->bytes_used / size_of_pair;
+        int i = 0;
+        /* iterate through all the pairs */
+        for (; i < number_of_pairs; i++)
+        {
+          /* skip the hidden directories */
+          if (!strcmp(name, ".") || !strcmp(name, ".."))
+          {
+            /* point to the next name */
+            name = pointer_to_next_name(name, fns);
+            continue;
+          }
+
+          /* array that stores the name of the new to be exported entity */
+          char new_name[MAX_BUFFER_SIZE] = {0};
+          strcpy(new_name, name);
+
+          /* fix the path for the new source */
+          char new_linux_path[MAX_BUFFER_SIZE] = {0};
+          strcpy(new_linux_path, linux_path_name);
+          strcat(new_linux_path, "/");
+          strcat(new_linux_path, new_name);
+
+
+          /* find the new source that will be exported */
+          off_t* entity_offset = pointer_to_offset(name, fns);
+          /* get the new source that will be exported */
+          MDS* new_source = get_MDS(fd, *entity_offset);
+          if (new_source == NULL)
+          {
+            free(directory_data_block);
+            return 0;
+          }
+
+          /* export the next source recursively */
+          int retval = cfs_export(fd, my_superblock, new_source, new_linux_path);
+          if (!retval)
+          {
+            free(directory_data_block);
+            free(new_source);
+            return 0;
+          }
+
+          /* free the allocated memory */
+          free(new_source);
+          /* point to the next name */
+          name = pointer_to_next_name(name, fns);
+        }
+
+        /* get the position of the next directory data block */
+        directory_data_block_position = directory_data_block->next_block;
+        /* free the current block because we finished with it */
+        free(directory_data_block);
+      }
 
       break;
     }
@@ -1665,7 +1748,7 @@ int cfs_export(int fd, superblock* my_superblock, MDS* source, char* linux_path_
     /* this should never happen */
     default:
     {
-
+      printf("Possible error in cfs_export(): This should have never printed because in this cfs implementation the MDS.file attribute can only be assigned values DIRECTORY or FILE.\n");
       break;
     }
   }
