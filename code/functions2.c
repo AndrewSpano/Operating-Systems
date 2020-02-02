@@ -72,6 +72,99 @@ int get_type(int fd, off_t offset)
   return ret_type;
 }
 
+int get_size_of_directory(int fd, off_t offset)
+{
+  int size = 0;
+  superblock* my_superblock = get_superblock(fd);
+  MDS* my_mds = get_MDS(fd, offset);
+  Block* my_block = get_Block(fd, my_superblock->block_size, my_mds->first_block);
+
+
+  // size_t size_of_struct_variables = sizeof(Block);
+  // size_t size_for_pairs = my_superblock->block_size - size_of_struct_variables;
+  size_t size_of_pair = my_superblock->filename_size + sizeof(off_t);
+  size_t pairs_in_block = my_block->bytes_used / size_of_pair;
+  // size_t max_pairs = size_for_pairs / size_of_pair;
+  // if (max_pairs);
+
+
+  char* ret_name = (char *) my_block->data; //.
+  off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+
+  ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size); //..
+  ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+
+  int i = 2;
+  for (; i < pairs_in_block; i++)
+  {
+    ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size);
+    ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+
+    MDS* my_mds = get_MDS(fd, *ret_offset);
+    if (my_mds->type == 2) //file 
+    {
+      size += my_mds->size;
+    }
+    else if (my_mds->type == 1) //directory 
+    {
+      size = size + get_size_of_directory(fd, *ret_offset);
+    }
+
+    free(my_mds);
+  }
+
+
+  while (my_block->next_block != 0)
+  {
+    Block* temp_block = my_block;
+    my_block = get_Block(fd, my_superblock->block_size, my_block->next_block);
+    free(temp_block);
+
+    /*first entity*/
+    char* ret_name = (char *) my_block->data; 
+    off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+    MDS* my_mds = get_MDS(fd, *ret_offset);
+    if (my_mds->type == 2) //file 
+    {
+      size += my_mds->size;
+    }
+    else if (my_mds->type == 1) //directory 
+    {
+      size = size + get_size_of_directory(fd, *ret_offset);
+    }
+
+    free(my_mds);
+
+    /*entities 2 and above*/
+    size_t pairs_in_block = my_block->bytes_used / size_of_pair;
+    int i = 1;
+    for (; i < pairs_in_block; i++)
+    {
+      ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size);
+      ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
+      MDS* my_mds = get_MDS(fd, *ret_offset);
+      if (my_mds->type == 2) //file 
+      {
+        size += my_mds->size;
+      }
+      else if (my_mds->type == 1) //directory 
+      {
+        size = size + get_size_of_directory(fd, *ret_offset);
+      }
+      free(my_mds);
+    }
+
+  }  
+
+
+  free(my_block);
+  free(my_mds);
+  free(my_superblock);
+  return size;
+}
+
+
+
 int print_characteristics(int fd, off_t offset)
 {
   MDS* my_mds = get_MDS(fd, offset);
@@ -97,30 +190,20 @@ int print_characteristics(int fd, off_t offset)
   info = localtime(&(my_mds->modification_time));
   printf("m:%d/%d/%d-%d:%d:%d ", info->tm_mday, info->tm_mon + 1, info->tm_year + 1900, info->tm_hour, info->tm_min, info->tm_sec);  
   // printf("modification time: %s", asctime(info));
-  printf("%lu ", my_mds->size);
+  if (my_mds->type == 2) //file
+  {
+    printf("%lu ", my_mds->size);  
+  }
+  else if (my_mds->type == 1) //directory
+  {   
+    printf("%d \n", get_size_of_directory(fd, offset));
+  }
 
   free(my_mds);
   return 1;
 }
 
 
-// int get_size_of_directory(int fd, off_t offset)
-// {
-//   int size = 0;
-//   superblock* my_superblock = get_superblock(fd);
-//   MDS* my_mds = get_MDS(fd, offset);
-//   Block* my_block = get_Block(fd, my_superblock->block_size, my_mds->first_block);
-
-//   char* ret_name = (char *) my_block->data; //.
-//   off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
-
-
-
-//   free(my_block);
-//   free(my_mds);
-//   free(my_superblock);
-
-// }
 
 
 
@@ -431,18 +514,30 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
 
 int insert_hole(hole_map* holes, off_t my_start, off_t my_end, int fd)
 {
+  if (holes->current_hole_number == MAX_HOLES)
+  {
+    // printf("MAX HOLES\n");
+    return 0;
+  }
+
+  if (my_start < holes->holes_table[0].start && my_end < holes->holes_table[0].start) //new hole at position 0
+  {
+    // printf("new hole at position 0\n");
+    shift_holes_to_the_right(holes, 0 ); //hole position?
+    holes->holes_table[0].start = my_start;
+    holes->holes_table[0].end = my_end;
+    holes->current_hole_number++;
+    set_hole_map(holes, fd);
+    return 1;
+  }
+
   int i = 0;
   for (; i < holes->current_hole_number; i++)
   {    
     //i+1-> current hole number must be < MAX HOLES
     if (my_start > holes->holes_table[i].end && my_end < holes->holes_table[i+1].start) //new hole between holes
     {
-      printf("new hole between holes\n");
-      if (holes->current_hole_number == MAX_HOLES)
-      {
-        printf("MAX HOLES\n");
-        return 0;
-      }
+      // printf("new hole between holes\n");
       shift_holes_to_the_right(holes, i+1); //hole position?
       holes->holes_table[i+1].start = my_start;
       holes->holes_table[i+1].end = my_end;
@@ -454,7 +549,7 @@ int insert_hole(hole_map* holes, off_t my_start, off_t my_end, int fd)
     {
       if (holes->holes_table[i+1].start == my_end) //merge holes
       {
-        printf("merge holes\n");
+        // printf("merge holes\n");
         holes->holes_table[i+1].start = holes->holes_table[i].start;
         shift_holes_to_the_left(holes, i); //i+1
         holes->current_hole_number--;
@@ -463,37 +558,27 @@ int insert_hole(hole_map* holes, off_t my_start, off_t my_end, int fd)
       }
       else if (holes->holes_table[i+1].start > my_end) //extend hole
       {
-        printf("extend1\n");
+        // printf("extend1\n");
         holes->holes_table[i].end = my_end;
         set_hole_map(holes, fd);
         return 1;
       }
       else
       {
-        printf("return 0 prwto\n");
+        // printf("return 0 prwto\n");
         return 0;
       }
     }
     else if (holes->holes_table[i].start == my_end) // extend hole
     {
-      printf("extend2\n");
+      // printf("extend2\n");
       holes->holes_table[i].start = my_start;
-      set_hole_map(holes, fd);
-      return 1;
-    }
-    else if (my_start < holes->holes_table[i].start && my_end < holes->holes_table[i].start) //new hole at position 0
-    {
-      printf("new hole at position 0\n");
-      shift_holes_to_the_right(holes, i ); //hole position?
-      holes->holes_table[i].start = my_start;
-      holes->holes_table[i].end = my_end; 
-      holes->current_hole_number++;
       set_hole_map(holes, fd);
       return 1;
     }
 
 
   }//for
-  printf("den bike pouthena sad\n");
+  // printf("den bike pouthena sad\n");
   return 0;
 }
