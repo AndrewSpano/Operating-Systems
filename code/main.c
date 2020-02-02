@@ -543,9 +543,10 @@ int main(int argc, char* argv[])
           exists = get_nth_string(read_input, buffer, index);
         }
 
+        /* check for error input */
         if (!exists)
         {
-          printf("Error input: missing file operads.\n");
+          printf("Error input: missing file operands.\n");
           break;
         }
 
@@ -1107,6 +1108,131 @@ int main(int argc, char* argv[])
 
       case 11:
       {
+        BREAK_IF_NO_FILE_OPEN(fd);
+
+        /* get the parameters */
+        int flag_i = 0;
+        int flag_r = 0;
+        int valid_parameters = get_cfs_rm_parameters(buffer, &flag_i, &flag_r);
+        /* check for errors */
+        if (!valid_parameters)
+        {
+          break;
+        }
+
+
+        /* array of characters used to read the user input */
+        char read_input[MAX_BUFFER_SIZE] = {0};
+
+
+        /* skip the parameter (options) strings */
+        int index = 2;
+        int exists = get_nth_string(read_input, buffer, index);
+        while (exists && is_parameter(read_input))
+        {
+          index++;
+          exists = get_nth_string(read_input, buffer, index);
+        }
+        /* check for input errors */
+        if (!exists)
+        {
+          printf("Error input: missing file operands.\n");
+          break;
+        }
+
+
+        /* iterate through all the destinations */
+        while (exists)
+        {
+          /* ask user if he wants to remove the specific file */
+          if (flag_i)
+          {
+            if (!get_approval_2(read_input, "remove"))
+            {
+              /* reset the array used to read the user input */
+              memset(read_input, 0, MAX_BUFFER_SIZE);
+              /* get the next entry */
+              index++;
+              exists = get_nth_string(read_input, buffer, index);
+              /* go to the next entry */
+              continue;
+            }
+          }
+
+          /* get the offset of the entity to be removed */
+          off_t destination_offset = get_offset_from_path(fd, my_superblock, list, read_input);
+          /* check for errors */
+          if (destination_offset == (off_t) 0)
+          {
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+          else if (destination_offset == (off_t) -1)
+          {
+            printf("Error input: the entity \"%s\" does not exist.\n", read_input);
+            /* reset the input read buffer */
+            memset(read_input, 0, MAX_BUFFER_SIZE);
+            /* get the next entry */
+            index++;
+            exists = get_nth_string(read_input, buffer, index);
+            /* go to the next entry */
+            continue;
+          }
+          else if (flag_r && is_root_offset(my_superblock, destination_offset))
+          {
+            printf("Error input: the entity \"%s\" is the root directory, which is the only directory that can't be removed recursively.\n", read_input);
+            /* reset the input read buffer */
+            memset(read_input, 0, MAX_BUFFER_SIZE);
+            /* get the next entry */
+            index++;
+            exists = get_nth_string(read_input, buffer, index);
+            /* go to the next entry */
+            continue;
+          }
+
+
+          /* get the destination entity */
+          MDS* destination_entity = get_MDS(fd, destination_offset);
+          /* check for errors */
+          if (destination_entity == NULL)
+          {
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+
+          /* get the offset of the parent */
+          off_t parent_offset = destination_entity->parent_offset;
+
+          /* get the parent directory */
+          MDS* parent_directory = get_MDS(fd, parent_offset);
+          /* check for errors */
+          if (parent_directory == NULL)
+          {
+            free(destination_entity);
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+
+
+          // /* remove the entity */
+          // int retval = cfs_rm();
+          // /* check for errors */
+          // if (!retval)
+          // {
+          //   free(destination_entity);
+          //   free(parent_directory);
+          //   FREE_AND_CLOSE(my_superblock, holes, list, fd);
+          //   return EXIT_FAILURE;
+          // }
+
+
+          /* reset the input read buffer */
+          memset(read_input, 0, MAX_BUFFER_SIZE);
+          /* get the next entry */
+          index++;
+          exists = get_nth_string(read_input, buffer, index);
+        }
+
 
         break;
       }
@@ -1156,7 +1282,8 @@ int main(int argc, char* argv[])
         /* check for errors */
         if (destination_directory_offset == (off_t) 0)
         {
-          break;
+          FREE_AND_CLOSE(my_superblock, holes, list, fd);
+          return EXIT_FAILURE;
         }
         else if (destination_directory_offset == (off_t) -1)
         {
@@ -1169,7 +1296,8 @@ int main(int argc, char* argv[])
         /* check for errors */
         if (destination_directory == NULL)
         {
-          break;
+          FREE_AND_CLOSE(my_superblock, holes, list, fd);
+          return EXIT_FAILURE;
         }
         else if (destination_directory->type != DIRECTORY)
         {
@@ -1482,7 +1610,6 @@ int main(int argc, char* argv[])
 
   } while (option != 15);
 
-  if (max_entity_size || block_size);
 
   free_mem(&my_superblock, &holes, &list);
 

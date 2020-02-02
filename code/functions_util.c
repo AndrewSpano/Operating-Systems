@@ -6,6 +6,7 @@
 
 #include "functions_util.h"
 #include "functions.h"
+#include "functions2.h"
 #include "util.h"
 
 
@@ -733,5 +734,255 @@ int copy_from_cfs_to_linux(int fd, superblock* my_superblock, MDS* source, int l
   }
 
   /* return 1 if everything goes smoothly */
+  return 1;
+}
+
+
+/* removes the data blocks of an entity from the cfs <=> creates holes */
+int remove_MDS_blocks(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entity)
+{
+  /* get important sizes */
+  size_t block_size = my_superblock->block_size;
+
+  /* get the first block */
+  off_t block_position = remove_entity->first_block;
+
+  /* iterate through all the blocks to remove them and create new holes */
+  while (block_position != 0)
+  {
+    /* create the hole that comes us from the deletion of the block */
+    int retval = insert_hole(holes, block_position, block_position + block_size, fd);
+    /* check if any error has occured, which should never actually occur */
+    if (!retval)
+    {
+      printf("Problem: elouse h insert_hole() gia trypa: hole.start = %ld, hole.end = %ld.\n", block_position, block_position + block_size);
+      return 0;
+    }
+    /* inform the superblock */
+    my_superblock->current_size -= block_size;
+
+    /* get the next block we just made a hole of, to get the next block if it exists */
+    Block* block = get_Block(fd, block_size, block_position);
+    /* check for errors */
+    if (block == NULL)
+    {
+      return 0;
+    }
+
+    /* get the position of the next block */
+    block_position = block->next_block;
+
+    /* free up the current block because we don't need it anymore */
+    free(block);
+  }
+
+  return 1;
+}
+
+
+/* removes a pair: <name, offset> from a directory data block, and replaces it with the last pair of the directory */
+int remove_pair_from_directory(int fd, superblock* my_superblock, hole_map* holes, MDS* directory, off_t directory_offset, off_t remove_offset)
+{
+  /* important sizes */
+  size_t block_size = my_superblock->block_size;
+  size_t fns = my_superblock->filename_size;
+  size_t size_of_pair = fns + sizeof(off_t);
+
+  /* variables to indicate key values */
+  Block* block_that_contains_offset = NULL;
+  off_t position_of_block_that_contains_offset = 0;
+  int position_inside_block = -1;
+  Block* last_block = NULL;
+  off_t position_of_last_block = 0;
+  Block* previous_of_last_block = NULL;
+  off_t position_of_previous_of_last_block = 0;
+
+
+  /* get the first data block of a directory */
+  off_t block_position = directory->first_block;
+  /* also get the previous block */
+  off_t previous_block = block_position;
+
+  /* loop to find the pair we want */
+  while (block_position != 0)
+  {
+    /* get the block */
+    Block* block = get_Block(fd, block_size, block_position);
+    /* check for errors */
+    DIE_IF_NULL(block);
+
+
+    uint number_of_pairs = block->bytes_used / size_of_pair;
+    char* name = (char *) block->data;
+
+
+    /* iterate through all the pairs inside the block */
+    int pair = 0;
+    for (; pair < number_of_pairs; pair++)
+    {
+      /* get the offset */
+      off_t* offset = pointer_to_offset(name, fns);
+
+      /* if we find the offset we are searching */
+      if (*offset == remove_offset)
+      {
+        /* free the space and inform the block */
+        memset(name, 0, size_of_pair);
+        block->bytes_used -= size_of_pair;
+
+        /* save important variables */
+        position_inside_block = pair;
+        block_that_contains_offset = block;
+        position_of_block_that_contains_offset = block_position;
+        break;
+      }
+
+      /* point to next name */
+      name = pointer_to_next_name(name, fns);
+    }
+
+    /* then this means the block was found */
+    if (position_inside_block != -1)
+    {
+      break;
+    }
+
+
+    /* update the variables */
+    previous_block = block_position;
+    block_position = block->next_block;
+    /* free up the allocated space */
+    free(block);
+  }
+
+  /* check for an unlike error */
+  if (block_position == 0)
+  {
+    printf("block_position == 0 in remove_pair(). This should have never printed. Congratulations, ELOUSES.\n");
+    return 0;
+  }
+
+  /* inform the variable */
+  position_of_block_that_contains_offset = block_position;
+
+
+
+  /* if the entity to be removed is in the last block */
+  if (block_that_contains_offset->next_block == 0)
+  {
+    /* if the block is now empty, we must remove it */
+    if (block_that_contains_offset->bytes_used == 0)
+    {
+      /* get the previous, which for sure exists because the first block will
+         never be emptied because it contains directories "." and ".." */
+      previous_of_last_block = get_Block(fd, block_size, previous_block);
+      /* if get_Block() fails */
+      if (previous_of_last_block == NULL)
+      {
+        free(block_that_contains_offset);
+        return 0;
+      }
+
+      /* update the previous block */
+      previous_of_last_block->next_block = 0;
+      /* set the previous block */
+      int retval = set_Block(previous_of_last_block, fd, block_size, previous_block);
+      free(previous_of_last_block);
+      /* if set_Block() fails */
+      if (!retval)
+      {
+        free(block_that_contains_offset);
+        return 0;
+      }
+
+      /* a new hole has been created with the removal of the block */
+      insert_hole(holes, position_of_block_that_contains_offset, position_of_block_that_contains_offset + block_size, fd);
+      my_superblock->current_size -= block_size;
+    }
+    /* else, if the block was not empty then we do not need to remove any block */
+    else
+    {
+      /* how many pairs existed in the block before the removal */
+      uint pairs_that_were_in_block = block_that_contains_offset->bytes_used / size_of_pair + 1;
+
+      /* if the pair that we removed was not the last, swap it with the last */
+      if (position_inside_block != pairs_that_were_in_block - 1)
+      {
+        size_t start_of_removed_pair = position_inside_block * size_of_pair;
+        size_t start_of_last_pair = (pairs_that_were_in_block - 1) * size_of_pair;
+
+        /* copy the last pair in its new place inside the same directory */
+        memcpy(block_that_contains_offset->data + start_of_removed_pair, block_that_contains_offset->data + start_of_last_pair, size_of_pair);
+        /* set the previous memory to 0 */
+        memset(block_that_contains_offset->data + start_of_last_pair, 0, size_of_pair);
+      }
+
+      /* set the block */
+      int retval = set_Block(block_that_contains_offset, fd, block_size, position_of_block_that_contains_offset);
+      /* if set_Block() fails */
+      if (!retval)
+      {
+        free(block_that_contains_offset);
+        return 0;
+      }
+
+    }
+  }
+  /* if not, go to the last block, take the last pair and place it */
+  else
+  {
+    /* iterate through the blocks to get the last block */
+    while (3 > 0)
+    {
+      /* get the block */
+      Block* block = get_Block(fd, block_size, block_position);
+      /* if get_Block() fails */
+      if (block == NULL)
+      {
+        free(block_that_contains_offset);
+        return 0;
+      }
+
+      /* if the current block is the last, exit */
+      if (block->next_block == 0)
+      {
+        /* free up the allocated space */
+        free(block);
+        break;
+      }
+
+      /* get the new positions */
+      previous_block = block_position;
+      block_position = block->next_block;
+      /* free up the allocated memory */
+      free(block);
+    }
+
+    /* inform the variables */
+    position_of_last_block = block_position;
+    position_of_previous_of_last_block = previous_block;
+
+
+
+    if (position_of_previous_of_last_block == position_of_block_that_contains_offset)
+    {
+
+    }
+
+  }
+
+
+  /* free up the allocated space */
+  free(block_that_contains_offset);
+
+  /* inform the directory */
+  directory->size -= size_of_pair;
+  /* update the directory */
+  int retval = set_MDS(directory, fd, directory_offset);
+  if (!retval)
+  {
+    return 0;
+  }
+
   return 1;
 }

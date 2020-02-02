@@ -1147,7 +1147,7 @@ int cfs_cat(int fd, superblock* my_superblock, hole_map* holes, MDS* destination
 
 int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list, char source_file_path[], char output_file_path[])
 {
-  /* max dir file number */
+  /* important sizes */
   size_t block_size = my_superblock->block_size;
   size_t fns = my_superblock->filename_size;
   uint mdfn = my_superblock->max_dir_file_number;
@@ -1294,6 +1294,80 @@ int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
     return 0;
   }
 
+
+  /* return 1 if everything goes smoothly */
+  return 1;
+}
+
+
+
+int cfs_rm(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entity, off_t remove_offset, MDS* parent_entity, off_t parent_offset, int flag_i, int flag_r, char* remove_path)
+{
+  /* important sizes */
+  size_t block_size = my_superblock->block_size;
+  size_t fns = my_superblock->filename_size;
+
+  /* if the entity to be removed is a directory */
+  if (remove_entity->type == DIRECTORY)
+  {
+    // an flagr svhnw ta panta, alliws mono arxeia
+    // epishs na diagrapws to entity apo ton parent mono an yparxei to flagr
+  }
+  /* if the entity to be removed is a file */
+  else if (remove_entity->type == FILE)
+  {
+    /* remove the data blocks of the file */
+    int retval = remove_MDS_blocks(fd, my_superblock, holes, remove_entity);
+    /* check for errors */
+    if (!retval)
+    {
+      return 0;
+    }
+
+    /* remove the MDS of the file */
+    retval = insert_hole(holes, remove_offset, remove_offset + sizeof(MDS), fd);
+    /* check for errors */
+    if (!retval)
+    {
+      return 0;
+    }
+    /* inform the superblock */
+    my_superblock->current_size -= sizeof(MDS);
+
+    /* remove the pair (<name, offset>) from the parent directory in order to
+       fully erase the existance of the file */
+    retval = remove_pair_from_directory(fd, my_superblock, holes, parent_entity, parent_offset, remove_offset);
+    /* check for errors */
+    if (!retval)
+    {
+      return 0;
+    }
+
+    /* update the parent MDS of the removal of the pair */
+    retval = set_MDS(parent_entity, fd, parent_offset);
+    /* check for errors */
+    if (!retval)
+    {
+      return 0;
+    }
+
+  }
+
+
+
+  /* update the superblock */
+  int retval = set_superblock(my_superblock, fd);
+  if (!retval)
+  {
+    return 0;
+  }
+
+  /* update the hole map */
+  retval = set_hole_map(holes, fd);
+  if (!retval)
+  {
+    return 0;
+  }
 
   /* return 1 if everything goes smoothly */
   return 1;

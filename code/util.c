@@ -307,6 +307,29 @@ int get_approval(char* source, char* destination, const char* operation)
 }
 
 
+/* same as above, just one string instead of 2 */
+int get_approval_2(char* string, const char* operation)
+{
+  char ask_option[MAX_BUFFER_SIZE] = {0};
+  printf("Do you want to %s the entity \"%s\"? Enter Y for yes, or N for no.\n", operation, string);
+  fgets(ask_option, MAX_BUFFER_SIZE, stdin);
+
+  while (strcmp(ask_option, "Y") && strcmp(ask_option, "Yes") && strcmp(ask_option, "YES") && strcmp(ask_option, "yes") && strcmp(ask_option, "N") && strcmp(ask_option, "No") && strcmp(ask_option, "No") && strcmp(ask_option, "no"))
+  {
+    printf("Unknown option entered. Please re-enter your option.\n");
+    memset(ask_option, 0, MAX_BUFFER_SIZE);
+    fgets(ask_option, MAX_BUFFER_SIZE, stdin);
+  }
+
+  if (!strcmp(ask_option, "N") || !strcmp(ask_option, "No") || !strcmp(ask_option, "No") || !strcmp(ask_option, "no"))
+  {
+    return 0;
+  }
+
+  return 1;
+}
+
+
 /* returns non-zero value if the offset is the offset of the root directory;
    else returns 0 */
 int is_root_offset(superblock* my_superblock, off_t offset)
@@ -468,11 +491,11 @@ int get_cfs_mv_parameters(const char buffer[], int* flag_i)
 
 
 /* pretty much self_explanatory */
-int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_R)
+int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_r)
 {
   char str[MAX_BUFFER_SIZE] = {0};
   char flags[3] = {0};
-  strcpy(flags, "iR");
+  strcpy(flags, "ir");
 
   int index = 2;
   while (get_nth_string(str, buffer, index) && is_parameter(str))
@@ -487,9 +510,9 @@ int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_R)
     {
       *flag_i = 1;
     }
-    if (char_exists_in_string(str, 'R'))
+    if (char_exists_in_string(str, 'r'))
     {
-      *flag_R = 1;
+      *flag_r = 1;
     }
 
     index++;

@@ -17,6 +17,7 @@ int contains_unknown_flag(const char* str, const char* flags);
 int path_is_absolute(const char path[]);
 int extract_last_entity_from_path(char path[], char* destination_string);
 int get_approval(char* source, char* destination, const char* operation);
+int get_approval_2(char* string, const char* operation);
 int is_root_offset(superblock* my_superblock, off_t offset);
 
 /* get the parameters of functions */
@@ -24,7 +25,7 @@ int get_cfs_touch_parameters(const char buffer[], int* flag_a, int* flag_m);
 int get_cfs_ls_parameters(const char buffer[], int* flag_a, int* flag_r, int* flag_l, int* flag_u, int* flag_d, int* flag_h);
 int get_cfs_cp_parameters(const char buffer[], int* flag_R, int* flag_i, int* flag_r);
 int get_cfs_mv_parameters(const char buffer[], int* flag_i);
-int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_R);
+int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_r);
 int get_cfs_create_parameters(const char buffer[], size_t* bs, size_t* fns, size_t* cfs, uint* mdfn, char* cfs_filename);
 
 /* navigation functions */
