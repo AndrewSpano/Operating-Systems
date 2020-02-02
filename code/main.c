@@ -4,6 +4,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #include "functions.h"
 #include "functions2.h"
@@ -597,6 +600,31 @@ int main(int argc, char* argv[])
             break;
           }
 
+          /* get the offset of the entity to be copied */
+          off_t entity_offset = get_offset_from_path(fd, my_superblock, list, read_input);
+          /* check for errors */
+          if (entity_offset == (off_t) 0)
+          {
+            free(destination_directory);
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+          else if (entity_offset == (off_t) -1)
+          {
+            printf("Error input: the entity \"%s\" does not exist.\n", read_input);
+            /* reset the array used to read the user input */
+            memset(read_input, 0, MAX_BUFFER_SIZE);
+            continue;
+          }
+          else if (is_root_offset(my_superblock, entity_offset))
+          {
+            printf("Error input: /root directory is the only directory that can't be copied. Therefore the entity \"%s\" can't be copied.\n", read_input);
+            /* reset the array used to read the user input */
+            memset(read_input, 0, MAX_BUFFER_SIZE);
+            continue;
+          }
+
+
           /* ask user if he wants to copy the specific file */
           if (flag_i)
           {
@@ -608,20 +636,6 @@ int main(int argc, char* argv[])
             }
           }
 
-          /* get the offset of the entity to be copied */
-          off_t entity_offset = get_offset_from_path(fd, my_superblock, list, read_input);
-          /* check for errors */
-          if (entity_offset == (off_t) 0)
-          {
-            continue;
-          }
-          else if (is_root_offset(my_superblock, entity_offset))
-          {
-            printf("Error input: /root directory is the only directory that can't be copied. Therefore the entity \"%s\" can't be copied.\n", read_input);
-            /* reset the array used to read the user input */
-            memset(read_input, 0, MAX_BUFFER_SIZE);
-            continue;
-          }
 
 
           /* get the name of the entity in order to check if an entity with the
@@ -1124,8 +1138,14 @@ int main(int argc, char* argv[])
 
         /* get the offset of the destination directory */
         off_t destination_directory_offset = get_offset_from_path(fd, my_superblock, list, destination_directory_path);
+        /* check for errors */
         if (destination_directory_offset == (off_t) 0)
         {
+          break;
+        }
+        else if (destination_directory_offset == (off_t) -1)
+        {
+          printf("Error input: the destination directory \"%s\" does not exist.\n", destination_directory_path);
           break;
         }
 
@@ -1150,6 +1170,7 @@ int main(int argc, char* argv[])
         }
 
 
+        /* iterate through all the sources to import them all */
         for (index = 2; index < total_sources + 2; index++)
         {
           /* read the source to be imported */
@@ -1180,6 +1201,7 @@ int main(int argc, char* argv[])
           /* make sure that no entity with the same name exists in the
              destination directory */
           off_t check_if_exists = directory_get_offset(fd, destination_directory, block_size, fns, last_entity_name);
+          /* check for errors */
           if (check_if_exists == (off_t) 0)
           {
             free(destination_directory);
@@ -1200,6 +1222,7 @@ int main(int argc, char* argv[])
             continue;
           }
 
+          /* import the files */
           int retval = cfs_import(fd, my_superblock, holes, destination_directory, destination_directory_offset, read_input);
           if (!retval)
           {
@@ -1209,6 +1232,7 @@ int main(int argc, char* argv[])
             return EXIT_FAILURE;
           }
 
+          /* reset the read input */
           memset(read_input, 0, MAX_BUFFER_SIZE);
         }
 
@@ -1221,6 +1245,169 @@ int main(int argc, char* argv[])
 
       case 13:
       {
+        BREAK_IF_NO_FILE_OPEN(fd);
+
+        /* array used to read the input of the user */
+        char read_input[MAX_BUFFER_SIZE] = {0};
+
+        /* check for correct input */
+        int exists = get_nth_string(read_input, buffer, 2);
+        if (!exists)
+        {
+          printf("Error input: you must give at least one source file and one destination directory.\n");
+          break;
+        }
+
+        /* check for correct input */
+        exists = get_nth_string(read_input, buffer, 3);
+        if (!exists)
+        {
+          printf("Error input: you must give one destination directory.\n");
+          break;
+        }
+
+        /* count the number of sources and get the destination directory */
+        int index = 2;
+        exists = get_nth_string(read_input, buffer, index);
+        while (exists)
+        {
+          index++;
+          exists = get_nth_string(read_input, buffer, index);
+        }
+
+        /* counter used later */
+        uint total_sources = index - 3;
+
+        /* get the path of the destination directory */
+        char destination_directory_path[MAX_BUFFER_SIZE] = {0};
+        get_nth_string(destination_directory_path, buffer, index - 1);
+
+
+        /* variable that will store directory statistics */
+        struct stat file_statistics = {0};
+        /* get the file statistics */
+        int retval = stat(destination_directory_path, &file_statistics);
+        /* check for errors */
+        if (retval == -1)
+        {
+          if (errno == ENOENT)
+          {
+            printf("Error input: the given linux path \"%s\" does not exist.\n", destination_directory_path);
+            break;
+          }
+          else
+          {
+            perror("stat()");
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+        }
+
+        /* make sure that the destination is a directory */
+        if ((file_statistics.st_mode & S_IFMT) != S_IFDIR)
+        {
+          printf("Error input: the given linux entity \"%s\" is not a directory.\n", destination_directory_path);
+          break;
+        }
+
+
+
+        /* iterate through all the sources to import them all */
+        for (index = 2; index < total_sources + 2; index++)
+        {
+          /* read the source to be imported */
+          get_nth_string(read_input, buffer, index);
+
+          /* get the offset of the entity to be copied */
+          off_t entity_offset = get_offset_from_path(fd, my_superblock, list, read_input);
+          /* check for errors */
+          if (entity_offset == (off_t) 0)
+          {
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+          else if (entity_offset == (off_t) -1)
+          {
+            printf("Error input: the entity \"%s\" does not exist.\n", read_input);
+            /* reset the array used to read the user input */
+            memset(read_input, 0, MAX_BUFFER_SIZE);
+            continue;
+          }
+
+
+          /* get the name of the entity in order to construct the linux path */
+          char temp_read_input[MAX_BUFFER_SIZE] = {0};
+          strcpy(temp_read_input, read_input);
+          char last_entity_name[MAX_BUFFER_SIZE] = {0};
+          extract_last_entity_from_path(temp_read_input, last_entity_name);
+
+          /* get the entitys actual name if "." or ".." was given as the last
+             pathname */
+          if (strcmp(last_entity_name, ".") || strcmp(last_entity_name, ".."))
+          {
+            /* get the directory's actual name in the array last_entity_name */
+            int retval = get_legit_name_from_path(fd, my_superblock, list, read_input, last_entity_name);
+            if (!retval)
+            {
+              printf("Error: operation get_legit_name_from_path() failed when called from main() in case 7. It should never fail. Exiting..\n");
+              FREE_AND_CLOSE(my_superblock, holes, list, fd);
+              return EXIT_FAILURE;
+            }
+          }
+
+          /* the linux name that the entity will have */
+          char linux_path_name[MAX_BUFFER_SIZE] = {0};
+          strcpy(linux_path_name, destination_directory_path);
+          strcat(linux_path_name, "/");
+          strcat(linux_path_name, last_entity_name);
+
+          /* variable used just to determine whether a file with the same name
+             already exists or not in the linux file system */
+          struct stat temp_statistics = {0};
+          /* get the file statistics */
+          int retval = stat(linux_path_name, &temp_statistics);
+          /* check for errors */
+          if (retval != -1)
+          {
+            printf("Error input: an entity with name \"%s\" already exists in the linux file system, therefore the entity \"%s\" can't be exported\n", linux_path_name, read_input);
+            /* reset the array used to read the user input */
+            memset(read_input, 0, MAX_BUFFER_SIZE);
+            continue;
+          }
+          else if (retval == -1 && errno != ENOENT)
+          {
+            perror("stat()");
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+
+          /* get the entity that will be exported */
+          MDS* entity = get_MDS(fd, entity_offset);
+          if (entity == NULL)
+          {
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+
+
+          /* export the entity */
+          retval = cfs_export(fd, my_superblock, entity, linux_path_name);
+          /* check for errors */
+          if (!retval)
+          {
+            printf("Something unexpected happened in cfs_export() when called from main. Exiting..\n");
+            free(entity);
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+
+
+          /* free up the allocated space */
+          free(entity);
+          /* reset the read input */
+          memset(read_input, 0, MAX_BUFFER_SIZE);
+        }
+
 
         break;
       }

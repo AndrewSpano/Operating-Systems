@@ -678,3 +678,60 @@ int copy_from_linux_to_cfs(int fd, superblock* my_superblock, hole_map* holes, M
 
   return 1;
 }
+
+
+/* copy the information of a cfs file to a linux file */
+int copy_from_cfs_to_linux(int fd, superblock* my_superblock, MDS* source, int linux_file_fd)
+{
+  /* get an important size */
+  size_t block_size = my_superblock->block_size;
+
+  /* return ok if the cfs file is of size 0 */
+  if (source->size == 0)
+  {
+    return 1;
+  }
+
+  /* position of the first block */
+  off_t block_position = source->first_block;
+
+  /* iterate through all the blocks */
+  while (block_position != 0)
+  {
+    /* get the information block */
+    Block* block = get_Block(fd, block_size, block_position);
+    /* check for errors */
+    if (block == NULL)
+    {
+      return 0;
+    }
+
+    /* determine how much size will be written */
+    size_t size_to_write = block->bytes_used;
+
+    /* write the block to the linux file */
+    ssize_t size_written = write(linux_file_fd, (char *) block->data, size_to_write);
+
+    /* check for errors */
+    if (size_written != size_to_write)
+    {
+      if (size_written == -1)
+      {
+        perror("write() error when called from copy_from_cfs_to_linux()");
+      }
+      else
+      {
+        printf("write() error in copy_from_cfs_to_linux(). It was supposed to write %ld bytes, but it wrote %ld bytes.\n", size_to_write, size_written);
+      }
+      return 0;
+    }
+
+    /* get the position of the next block */
+    block_position = block->next_block;
+    /* free up the allocated struct */
+    free(block);
+  }
+
+  /* return 1 if everything goes smoothly */
+  return 1;
+}

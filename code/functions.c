@@ -1616,6 +1616,67 @@ int cfs_import(int fd, superblock* my_superblock, hole_map* holes, MDS* destinat
 
 
 
+int cfs_export(int fd, superblock* my_superblock, MDS* source, char* linux_path_name)
+{
+  /* get some important sizes */
+  size_t block_size = my_superblock->block_size;
+  size_t fns = my_superblock->filename_size;
+
+
+
+  /* determine whether this entity to be exported is a file or a directory */
+  switch (source->type)
+  {
+
+    /* if the entity to be exported is a directory */
+    case DIRECTORY:
+    {
+
+      break;
+    }
+
+    /* if the entity to be exported is a file */
+    case FILE:
+    {
+      /* create the linux file and get its fd */
+      int linux_file_fd = open(linux_path_name, O_CREAT | O_WRONLY, PERMS);
+      if (linux_file_fd == -1)
+      {
+        perror("open() when called from cfs_export()");
+        return 0;
+      }
+
+      /* copy the contents of the cfs file to the corresponding linux file */
+      int retval = copy_from_cfs_to_linux(fd, my_superblock, source, linux_file_fd);
+      /* check for errors */
+      if (!retval)
+      {
+        /* close the linux file */
+        CLOSE_OR_DIE2(linux_file_fd);
+        return 0;
+      }
+
+      /* close the linux file */
+      CLOSE_OR_DIE2(linux_file_fd);
+
+      break;
+    }
+
+    /* this should never happen */
+    default:
+    {
+
+      break;
+    }
+  }
+
+
+
+  /* return 1 if everything goes smoothly */
+  return 1;
+}
+
+
 
 
 int cfs_read(char* cfs_filename, int fd)
