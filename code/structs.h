@@ -60,7 +60,11 @@ typedef struct
 } MDS;
 
 
-
+typedef struct pair
+{
+  char* name;
+  off_t offset;
+} pair;
 
 typedef struct Block
 {
