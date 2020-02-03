@@ -72,6 +72,19 @@ int get_type(int fd, off_t offset)
   return ret_type;
 }
 
+int get_number_of_hardlinks(int fd, off_t offset)
+{
+  MDS* my_mds = get_MDS(fd, offset);
+  if (my_mds == NULL)
+  {
+    printf("get_MDS error\n");
+    return -1;
+  }
+  int number_of_hard_links = my_mds->number_of_hard_links;
+  free(my_mds);
+  return number_of_hard_links;
+}
+
 int get_size_of_directory(int fd, off_t offset)
 {
   int size = 0;
@@ -190,6 +203,9 @@ int print_characteristics(int fd, off_t offset)
   info = localtime(&(my_mds->modification_time));
   printf("m:%d/%d/%d-%d:%d:%d ", info->tm_mday, info->tm_mon + 1, info->tm_year + 1900, info->tm_hour, info->tm_min, info->tm_sec);  
   // printf("modification time: %s", asctime(info));
+
+  printf("%u ", my_mds->number_of_hard_links);
+
   if (my_mds->type == 2) //file
   {
     printf("%lu ", my_mds->size);  
@@ -226,45 +242,94 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
 
   if (flag_u)
   {
-    /* code */
     char* ret_name = (char *) my_block->data; //.
     off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
     if (flag_a)
     {
       if (flag_l)
       {
-        print_characteristics(fd, *ret_offset);
-        printf("\033[1;34m");
-        printf("%s \n", ret_name);
+        if (flag_h)
+        {
+          if (get_number_of_hardlinks(fd, *ret_offset) > 1)
+          {
+            print_characteristics(fd, *ret_offset);
+            printf("\033[1;34m");
+            printf("%s \n", ret_name);
+            printf("\033[0m");
+          }
+        }
+        else
+        {
+          print_characteristics(fd, *ret_offset);
+          printf("\033[1;34m");
+          printf("%s \n", ret_name);
+          printf("\033[0m");
+        }
       }
       else
       {
-        printf("\033[1;34m");
-        printf("%s \n", ret_name);
+        if (flag_h)
+        {
+          if (get_number_of_hardlinks(fd, *ret_offset) > 1)
+          {
+            printf("\033[1;34m");
+            printf("%s \n", ret_name);
+            printf("\033[0m");
+          }
+        }
+        else
+        {
+          printf("\033[1;34m");
+          printf("%s \n", ret_name);
+          printf("\033[0m");
+        } 
       }    
     }
-    printf("\033[0m");
+    // printf("\033[0m");
 
-    // printf("offset for name: %lu\n", *ret_offset);
     ret_name = pointer_to_next_name(ret_name, my_superblock->filename_size); //..
     ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
     if (flag_a)
     {
       if (flag_l)
       {
-        print_characteristics(fd, *ret_offset);
-        printf("\033[1;34m");
-        printf("%s \n", ret_name);
-        printf("\033[0m");
+        if (flag_h)
+        {
+          if (get_number_of_hardlinks(fd, *ret_offset) > 1)
+          {
+            print_characteristics(fd, *ret_offset);
+            printf("\033[1;34m");
+            printf("%s \n", ret_name);
+            printf("\033[0m");
+          }
+        }
+        else
+        {
+          print_characteristics(fd, *ret_offset);
+          printf("\033[1;34m");
+          printf("%s \n", ret_name);
+          printf("\033[0m");
+        }
       }
       else
       {
-        printf("\033[1;34m");
-        printf("%s \n", ret_name);
-        printf("\033[0m");
+        if (flag_h)
+        {
+          if (get_number_of_hardlinks(fd, *ret_offset) > 1)
+          {
+            printf("\033[1;34m");
+            printf("%s \n", ret_name);
+            printf("\033[0m");
+          }
+        }
+        else
+        {
+          printf("\033[1;34m");
+          printf("%s \n", ret_name);
+          printf("\033[0m");
+        } 
       }    
     }
-    // printf("\033[0m");
 
     int i = 2;
     for (; i < pairs_in_block; i++)
@@ -297,49 +362,69 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
             }
           }
         }
-        // printf("%s\n", ret_offset);
-        // printf("\033[0m");
       }
       else
       {
         if (get_type(fd, *ret_offset) == 1) //directory
         {
-          if (flag_l)
+          if (!flag_h)
           {
-            print_characteristics(fd, *ret_offset);
-            printf("\033[1;34m");
-            printf("%s \n", ret_name);
-            printf("\033[0m");
-            if (flag_r)
+            if (flag_l)
             {
-              cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+              print_characteristics(fd, *ret_offset);
+              printf("\033[1;34m");
+              printf("%s \n", ret_name);
+              printf("\033[0m");
+              if (flag_r)
+              {
+                cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+              }
+            }
+            else
+            {
+              printf("\033[1;34m");
+              printf("%s \n", ret_name);
+              printf("\033[0m");
+              if (flag_r)
+              {
+                cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+              }
             }
           }
-          else
-          {
-            printf("\033[1;34m");
-            printf("%s \n", ret_name);
-            printf("\033[0m");
-            if (flag_r)
-            {
-              cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
-            }
-          }
-          // printf("\033[0m");
         }
         else //file
         {
           if (flag_l)
           {
-            print_characteristics(fd, *ret_offset);
-            printf("%s \n", ret_name);
+            if (flag_h)
+            {
+              if (get_number_of_hardlinks(fd, *ret_offset) > 1 )
+              {
+                print_characteristics(fd, *ret_offset);
+                printf("%s \n", ret_name);   
+              }
+            }
+            else
+            {
+              print_characteristics(fd, *ret_offset);
+              printf("%s \n", ret_name);
+            }
           }
           else
           {
-            printf("%s \n", ret_name);
+            if (flag_h)
+            {
+              if (get_number_of_hardlinks(fd, *ret_offset) > 1)
+              {
+                printf("%s \n", ret_name);   
+              }
+            }
+            else
+            {
+              printf("%s \n", ret_name);
+            }
           } 
         }
-        // printf("%s\n", ret_offset);
       }
 
     }
@@ -380,49 +465,69 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
             }
           }
         }
-        // printf("%s\n", ret_offset);
-        // printf("\033[0m");
       }
       else //print all
       {
         if (get_type(fd, *ret_offset) == 1) //directory
         {
-          if (flag_l)
+          if (!flag_h)
           {
-            print_characteristics(fd, *ret_offset);
-            printf("\033[1;34m");
-            printf("%s \n", ret_name);
-            printf("\033[0m");
-            if (flag_r)
+            if (flag_l)
             {
-              cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+              print_characteristics(fd, *ret_offset);
+              printf("\033[1;34m");
+              printf("%s \n", ret_name);
+              printf("\033[0m");
+              if (flag_r)
+              {
+                cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+              }
+            }
+            else
+            {
+              printf("\033[1;34m");
+              printf("%s \n", ret_name);
+              printf("\033[0m");
+              if (flag_r)//xwris flag_l
+              {
+                cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+              }
             }
           }
-          else
-          {
-            printf("\033[1;34m");
-            printf("%s \n", ret_name);
-            printf("\033[0m");
-            if (flag_r)//xwris flag_l
-            {
-              cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
-            }
-          }
-          // printf("\033[0m");
         }
         else //file
         {
           if (flag_l)
           {
-            print_characteristics(fd, *ret_offset);
-            printf("%s \n", ret_name);
+            if (flag_h)
+            {
+              if (get_number_of_hardlinks(fd, *ret_offset) > 1)
+              {
+                print_characteristics(fd, *ret_offset);
+                printf("%s \n", ret_name);
+              }
+            }
+            else
+            {
+              print_characteristics(fd, *ret_offset);
+              printf("%s \n", ret_name);
+            }
           }
           else
           {
-            printf("%s \n", ret_name);
+            if (flag_h)
+            {
+              if (get_number_of_hardlinks(fd, *ret_offset) > 1)
+              {
+                printf("%s \n", ret_name);
+              }
+            }
+            else
+            {
+              printf("%s \n", ret_name);
+            }
           } 
         }
-        // printf("%s\n", ret_offset);
       }
 
       /*entities 2 and above*/
@@ -458,49 +563,70 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
               }
             }
           }
-          // printf("%s\n", ret_offset);
-          // printf("\033[0m");
         }
         else //print all
         {
           if (get_type(fd, *ret_offset) == 1) //directory
           {
-            if (flag_l)
+            if (!flag_h)
             {
-              print_characteristics(fd, *ret_offset);
-              printf("\033[1;34m");
-              printf("%s \n", ret_name);
-              printf("\033[0m");
-              if (flag_r)
+              if (flag_l)
               {
-                cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+                print_characteristics(fd, *ret_offset);
+                printf("\033[1;34m");
+                printf("%s \n", ret_name);
+                printf("\033[0m");
+                if (flag_r)
+                {
+                  cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+                }
               }
-            }
-            else
-            {
-              printf("\033[1;34m");
-              printf("%s \n", ret_name);
-              printf("\033[0m");
-              if (flag_r)//xwris_flag_l
+              else
               {
-                cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+                printf("\033[1;34m");
+                printf("%s \n", ret_name);
+                printf("\033[0m");
+                if (flag_r)//xwris_flag_l
+                {
+                  cfs_ls(fd, *ret_offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+                }
               }
+              // printf("\033[0m");
             }
-            // printf("\033[0m");
           }
           else //file
           {
             if (flag_l)
             {
-              print_characteristics(fd, *ret_offset);
-              printf("%s \n", ret_name);
+              if (flag_h)
+              {
+                if (get_number_of_hardlinks(fd, *ret_offset) > 1)
+                {
+                  print_characteristics(fd, *ret_offset);
+                  printf("%s \n", ret_name);
+                }
+              }
+              else
+              {
+                print_characteristics(fd, *ret_offset);
+                printf("%s \n", ret_name);
+              }  
             }
             else
             {
-              printf("%s \n", ret_name);
+              if (flag_h)
+              {
+                if (get_number_of_hardlinks(fd, *ret_offset) > 1)
+                {
+                  printf("%s \n", ret_name);
+                }
+              }
+              else
+              {
+                printf("%s \n", ret_name);
+              }  
             } 
           }
-          // printf("%s\n", ret_offset);
         }
 
       }
@@ -511,7 +637,7 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
   {
     uint size_of_table = 0;
     size_of_table = number_of_sub_entities_in_directory(my_mds, my_superblock->filename_size);
-    // printf("size_of_table = %d\n", size_of_table);
+    // printf("number_of_sub_entities_in_directory   %d\n", size_of_table);
     pair* table = malloc(sizeof(pair) * size_of_table);
     memset(table, 0, sizeof(pair) * size_of_table);
 
@@ -519,10 +645,7 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
     char* ret_name = (char *) my_block->data; 
     off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
     int j = 0;
-    // table[j].name = (char*) malloc(strlen(ret_name) * sizeof(char) + 1);
     table[j].name = (char*) malloc(my_superblock->filename_size * sizeof(char));
-
-    // printf("%p\n", table[j].name);
     strcpy(table[j].name, ret_name);
     table[j].offset = *ret_offset;
     j++;
@@ -578,8 +701,8 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
     // for (; k < size_of_table; k++) 
     //   printf("%s %lu\n", table[k].name, table[k].offset);
 
+    // printf("sorting array by name\n");
     qsort((void*)table, size_of_table, sizeof(pair), comparator); 
-    // printf("QSORT\n");
     
     //////same as flag_u//////
     if (flag_a)
@@ -591,7 +714,6 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
         printf("%s \n", table[0].name);
         printf("\033[0m");
         print_characteristics(fd, table[1].offset); //..
-        // printf("\033[1;34m");
         printf("\033[1;34m");
         printf("%s \n", table[1].name);
       }
@@ -605,42 +727,42 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
     }
     printf("\033[0m");
 
-    /*all other entitites expect /. /.. */ 
+    /*all other entitites excect /. /.. */ 
     int p = 2;
     for (; p < size_of_table; p++)
     {
       if (flag_d) //print only dirs
+      {
+        if (get_type(fd, table[p].offset) == 1)
         {
-          if (get_type(fd, table[p].offset) == 1)
+          if (flag_l)
           {
-            if (flag_l)
+            print_characteristics(fd, table[p].offset);
+            printf("\033[1;34m");
+            printf("%s \n", table[p].name);
+            printf("\033[0m");
+            if (flag_r)
             {
-              print_characteristics(fd, table[p].offset);
-              printf("\033[1;34m");
-              printf("%s \n", table[p].name);
-              printf("\033[0m");
-              if (flag_r)
-              {
-                cfs_ls(fd, table[p].offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
-              }
-            }
-            else
-            {
-              printf("\033[1;34m");
-              printf("%s \n", table[p].name);
-              printf("\033[0m");
-              if (flag_r) //xwris flag_l
-              {
-                cfs_ls(fd, table[p].offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
-              }
+              cfs_ls(fd, table[p].offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
             }
           }
-          // printf("%s\n", ret_offset);
-          // printf("\033[0m");
+          else
+          {
+            printf("\033[1;34m");
+            printf("%s \n", table[p].name);
+            printf("\033[0m");
+            if (flag_r) //xwris flag_l
+            {
+              cfs_ls(fd, table[p].offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
+            }
+          }
         }
-        else //print all
+      }
+      else //print all
+      {
+        if (get_type(fd, table[p].offset) == 1) //directory
         {
-          if (get_type(fd, table[p].offset) == 1) //directory
+          if (!flag_h)
           {
             if (flag_l)
             {
@@ -663,22 +785,42 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
                 cfs_ls(fd, table[p].offset, flag_a, flag_r, flag_l, flag_u, flag_d, flag_h);
               }
             }
-            // printf("\033[0m");
           }
-          else //file
+        }
+        else //file
+        {
+          if (flag_l)
           {
-            if (flag_l)
+            if (flag_h)
+            {
+              if (get_number_of_hardlinks(fd, table[p].offset) > 1)
+              {
+                print_characteristics(fd, table[p].offset);
+                printf("%s \n", table[p].name);
+              }
+            }
+            else
             {
               print_characteristics(fd, table[p].offset);
               printf("%s \n", table[p].name);
+            } 
+          }
+          else
+          {
+            if (flag_h)
+            {
+              if (get_number_of_hardlinks(fd, table[p].offset) > 1)
+              {
+                printf("%s \n", table[p].name);
+              }
             }
             else
             {
               printf("%s \n", table[p].name);
             } 
-          }
-          // printf("%s\n", ret_offset);
+          } 
         }
+      }
     }
     ///////////
 
