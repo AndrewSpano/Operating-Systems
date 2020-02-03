@@ -291,14 +291,20 @@ int get_approval(char* source, char* destination, const char* operation)
   printf("Do you want to %s the entity \"%s\" to the destination \"%s\"? Enter Y for yes, or N for no.\n", operation, source, destination);
   fgets(ask_option, MAX_BUFFER_SIZE, stdin);
 
-  while (strcmp(ask_option, "Y\n") && strcmp(ask_option, "Yes\n") && strcmp(ask_option, "YES\n") && strcmp(ask_option, "yes\n") && strcmp(ask_option, "N\n") && strcmp(ask_option, "No\n") && strcmp(ask_option, "No\n") && strcmp(ask_option, "no\n"))
+  char answer[MAX_BUFFER_SIZE] = {0};
+  get_nth_string(answer, ask_option, 1);
+
+  while (strcmp(answer, "Y") && strcmp(answer, "Yes") && strcmp(answer, "YES") && strcmp(answer, "yes") && strcmp(answer, "N") && strcmp(answer, "No") && strcmp(answer, "NO") && strcmp(answer, "no\n"))
   {
     printf("Unknown option entered. Please re-enter your option.\n");
     memset(ask_option, 0, MAX_BUFFER_SIZE);
     fgets(ask_option, MAX_BUFFER_SIZE, stdin);
+
+    memset(answer, 0 MAX_BUFFER_SIZE);
+    get_nth_string(answe, ask_option, 1);
   }
 
-  if (!strcmp(ask_option, "N\n") || !strcmp(ask_option, "No\n") || !strcmp(ask_option, "No\n") || !strcmp(ask_option, "no\n"))
+  if (!strcmp(answer, "N\n") || !strcmp(answer, "No\n") || !strcmp(answer, "NO\n") || !strcmp(answer, "no\n"))
   {
     return 0;
   }

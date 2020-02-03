@@ -1187,6 +1187,17 @@ int main(int argc, char* argv[])
           }
 
 
+          /* get the source entity */
+          MDS* source = get_MDS(fd, source_offset);
+          /* if get_MDS() fails */
+          if (source == NULL)
+          {
+            free(destination_directory);
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+
+          
         }
         /* else, we have to move many entities to a common destination */
         else
