@@ -9,6 +9,7 @@
 #include <dirent.h>
 
 #include "functions.h"
+#include "functions2.h"
 #include "functions_util.h"
 #include "util.h"
 
@@ -1304,8 +1305,8 @@ int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
 int cfs_rm(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entity, off_t remove_offset, MDS* parent_entity, off_t parent_offset, int flag_i, int flag_r, char* remove_path)
 {
   /* important sizes */
-  size_t block_size = my_superblock->block_size;
-  size_t fns = my_superblock->filename_size;
+  // size_t block_size = my_superblock->block_size;
+  // size_t fns = my_superblock->filename_size;
 
   /* if the entity to be removed is a directory */
   if (remove_entity->type == DIRECTORY)

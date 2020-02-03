@@ -26,6 +26,7 @@ int get_legit_name_from_path(int fd, superblock* my_superblock, Stack_List* list
 int copy_from_linux_to_cfs(int fd, superblock* my_superblock, hole_map* holes, MDS* imported_file, int linux_file_fd, size_t linux_file_size);
 int copy_from_cfs_to_linux(int fd, superblock* my_superblock, MDS* source, int linux_file_fd);
 
+int remove_MDS_blocks(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entity);
 int remove_pair_from_directory(int fd, superblock* my_superblock, hole_map* holes, MDS* parent_entity, off_t parent_offset, off_t remove_offset);
 
 #endif

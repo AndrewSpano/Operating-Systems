@@ -780,7 +780,8 @@ int remove_MDS_blocks(int fd, superblock* my_superblock, hole_map* holes, MDS* r
 }
 
 
-/* removes a pair: <name, offset> from a directory data block, and replaces it with the last pair of the directory */
+/* removes a pair: <name, offset> from a directory data block, and replaces it
+   with the last pair of the last block of the directory */
 int remove_pair_from_directory(int fd, superblock* my_superblock, hole_map* holes, MDS* directory, off_t directory_offset, off_t remove_offset)
 {
   /* important sizes */
@@ -792,10 +793,6 @@ int remove_pair_from_directory(int fd, superblock* my_superblock, hole_map* hole
   Block* block_that_contains_offset = NULL;
   off_t position_of_block_that_contains_offset = 0;
   int position_inside_block = -1;
-  Block* last_block = NULL;
-  off_t position_of_last_block = 0;
-  Block* previous_of_last_block = NULL;
-  off_t position_of_previous_of_last_block = 0;
 
 
   /* get the first data block of a directory */
@@ -875,7 +872,7 @@ int remove_pair_from_directory(int fd, superblock* my_superblock, hole_map* hole
     {
       /* get the previous, which for sure exists because the first block will
          never be emptied because it contains directories "." and ".." */
-      previous_of_last_block = get_Block(fd, block_size, previous_block);
+      Block *previous_of_last_block = get_Block(fd, block_size, previous_block);
       /* if get_Block() fails */
       if (previous_of_last_block == NULL)
       {
@@ -898,6 +895,7 @@ int remove_pair_from_directory(int fd, superblock* my_superblock, hole_map* hole
       /* a new hole has been created with the removal of the block */
       insert_hole(holes, position_of_block_that_contains_offset, position_of_block_that_contains_offset + block_size, fd);
       my_superblock->current_size -= block_size;
+      directory->blocks_using--;
     }
     /* else, if the block was not empty then we do not need to remove any block */
     else
@@ -959,15 +957,94 @@ int remove_pair_from_directory(int fd, superblock* my_superblock, hole_map* hole
     }
 
     /* inform the variables */
-    position_of_last_block = block_position;
-    position_of_previous_of_last_block = previous_block;
+    off_t position_of_last_block = block_position;
+    off_t position_of_previous_of_last_block = previous_block;
 
-
-
-    if (position_of_previous_of_last_block == position_of_block_that_contains_offset)
+    /* for start, get the last block */
+    Block* last_block = get_Block(fd, block_size, position_of_last_block);
+    /* if get_Block() fails */
+    if (last_block == NULL)
     {
-
+      free(block_that_contains_offset);
+      return 0;
     }
+
+    /* how many pairs the last block contains */
+    uint pairs_in_last_block = last_block->bytes_used / size_of_pair;
+
+    /* get the positions of the pairs inside the data arrays */
+    size_t start_of_removed_pair = position_inside_block * size_of_pair;
+    size_t start_of_last_pair = (pairs_in_last_block - 1) * size_of_pair;
+
+    /* copy the last pair in its new place inside the same directory */
+    memcpy(block_that_contains_offset->data + start_of_removed_pair, last_block->data + start_of_last_pair, size_of_pair);
+    /* fix its size */
+    block_that_contains_offset->bytes_used += size_of_pair;
+    /* set the previous memory to 0 */
+    memset(last_block->data + start_of_last_pair, 0, size_of_pair);
+    /* fix the size of the last block */
+    last_block->bytes_used -= size_of_pair;
+
+
+    /* set the block with the new pair */
+    int retval = set_Block(block_that_contains_offset, fd, block_size, position_of_block_that_contains_offset);
+    free(block_that_contains_offset);
+    /* if set_Block() fails */
+    if (!retval)
+    {
+      free(block_that_contains_offset);
+      free(last_block);
+      return 0;
+    }
+
+    /* if the last block contained only 1 pair and it got removed, remove the
+       whole block, set the previous block accordingly and create a new hole */
+    if (last_block->bytes_used == 0)
+    {
+      /* get the previous block in order to set to 0 its "next_block" attribute */
+      Block *previous_of_last_block = get_Block(fd, block_size, position_of_previous_of_last_block);
+      /* if get_Block() fails */
+      if (previous_of_last_block == NULL)
+      {
+        free(block_that_contains_offset);
+        free(last_block);
+        return 0;
+      }
+
+      /* update the previous block */
+      previous_of_last_block->next_block = 0;
+      /* set the previous block */
+      retval = set_Block(previous_of_last_block, fd, block_size, position_of_previous_of_last_block);
+      free(previous_of_last_block);
+      /* if set_Block() fails */
+      if (!retval)
+      {
+        free(last_block);
+        return 0;
+      }
+
+      /* a new hole has been created with the removal of the last block */
+      insert_hole(holes, position_of_block_that_contains_offset, position_of_block_that_contains_offset + block_size, fd);
+      my_superblock->current_size -= block_size;
+      directory->blocks_using--;
+    }
+    /* else if the last pair of the last block got removed without causing any
+       further deletion, just update the last block */
+    else
+    {
+      /* set the previous block */
+      retval = set_Block(last_block, fd, block_size, position_of_last_block);
+      /* if set_Block() fails */
+      if (!retval)
+      {
+        free(block_that_contains_offset);
+        free(last_block);
+        return 0;
+      }
+    }
+
+    /* freep up the last block because we don't need it anymore */
+    free(last_block);
 
   }
 
