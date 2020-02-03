@@ -838,6 +838,7 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
           {
             /* point to the next name */
             name = pointer_to_next_name(name, fns);
+            /* go to the next entry */
             continue;
           }
 
@@ -864,6 +865,9 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
           {
             if (!get_approval(temp_source_buffer, temp_destination_buffer, "copy"))
             {
+              /* point to the next name */
+              name = pointer_to_next_name(name, fns);
+              /* go to the next entry */
               continue;
             }
           }
@@ -1151,6 +1155,7 @@ int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
   /* important sizes */
   size_t block_size = my_superblock->block_size;
   size_t fns = my_superblock->filename_size;
+  size_t size_of_pair = fns + sizeof(off_t);
   uint mdfn = my_superblock->max_dir_file_number;
 
 
@@ -1245,13 +1250,16 @@ int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
   }
 
 
+  /* insert the pair <name, offset> in the destination directory */
   retval = insert_pair(fd, holes, destination_directory, name_of_link, source_offset, block_size, fns);
+  /* if insert_pair() fails */
   if (retval == 0)
   {
     free(source);
     free(destination_directory);
     return 0;
   }
+  /* if a new block was allocated */
   else if (retval == 1)
   {
     /* if insert_pair() returned 1, it means that we allocated a new block to
@@ -1280,6 +1288,20 @@ int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
   }
 
 
+  /* inform the destination directory of the added pair */
+  destination_directory->size += size_of_pair;
+  /* update the destination directory */
+  retval = set_MDS(destination_directory, fd, output_directory_offset);
+  /* free up allocated space */
+  free(destination_directory);
+  /* if set_MDS() fails */
+  if (!retval)
+  {
+    free(source);
+    return 0;
+  }
+
+
   /* increment the number of hard links */
   source->number_of_hard_links++;
 
@@ -1287,8 +1309,6 @@ int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
   retval = set_MDS(source, fd, source_offset);
   /* free up the allocated memory */
   free(source);
-  free(destination_directory);
-
   /* last check for errors */
   if (!retval)
   {
@@ -1305,14 +1325,146 @@ int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
 int cfs_rm(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entity, off_t remove_offset, MDS* parent_entity, off_t parent_offset, int flag_i, int flag_r, char* remove_path)
 {
   /* important sizes */
-  // size_t block_size = my_superblock->block_size;
-  // size_t fns = my_superblock->filename_size;
+  size_t block_size = my_superblock->block_size;
+  size_t fns = my_superblock->filename_size;
+  size_t size_of_pair = fns + sizeof(off_t);
 
   /* if the entity to be removed is a directory */
   if (remove_entity->type == DIRECTORY)
   {
-    // an flagr svhnw ta panta, alliws mono arxeia
-    // epishs na diagrapws to entity apo ton parent mono an yparxei to flagr
+
+    /* get the position of the data blocks of the source directory */
+    off_t directory_data_block_position = remove_entity->first_block;
+    /* iterate through all the directory data blocks */
+    while (directory_data_block_position != (off_t) 0)
+    {
+      /* get the data block */
+      Block* directory_data_block = get_Block(fd, block_size, directory_data_block_position);
+      /* return 0 if get_Block() fails */
+      DIE_IF_NULL(directory_data_block);
+
+      /* used to get the name of each pair of a directory data block */
+      char* name = (char *) directory_data_block->data;
+
+      uint number_of_pairs = directory_data_block->bytes_used / size_of_pair;
+      int i = 0;
+      for (; i < number_of_pairs; i++)
+      {
+        /* skip the hidden directories */
+        if (!strcmp(name, ".") || !strcmp(name, ".."))
+        {
+          /* point to the next name */
+          name = pointer_to_next_name(name, fns);
+          /* go to the next entry */
+          continue;
+        }
+
+        /* find the new destination that will be removed */
+        off_t* entity_offset = pointer_to_offset(name, fns);
+        /* get the new destination that will be removed */
+        MDS* new_destination = get_MDS(fd, *entity_offset);
+        /* if get_MDS() fails */
+        if (new_destination == NULL)
+        {
+          free(directory_data_block);
+          return 0;
+        }
+
+
+        /* fix the path for the remove_entity */
+        char temp_remove_path_buffer[MAX_BUFFER_SIZE] = {0};
+        strcpy(temp_remove_path_buffer, remove_path);
+        strcat(temp_remove_path_buffer, "/");
+        strcat(temp_remove_path_buffer, name);
+
+        /* ask user if he wants to remove the specific file */
+        if ((new_destination->type == FILE || (new_destination->type == DIRECTORY && flag_r)) && flag_i)
+        {
+          if (!get_approval_2(temp_remove_path_buffer, "remove"))
+          {
+            /* point to the next name */
+            name = pointer_to_next_name(name, fns);
+            /* go to the next entry */
+            continue;
+          }
+        }
+
+
+        /* remove the entity recursively */
+        int retval = cfs_rm(fd, my_superblock, holes, new_destination, *entity_offset, remove_entity, remove_offset, flag_i, flag_r, temp_remove_path_buffer);
+        /* if for some unexpected reason the functions fails */
+        if (!retval)
+        {
+          free(directory_data_block);
+          free(new_destination);
+          return 0;
+        }
+
+        /* free the allocated memory */
+        free(new_destination);
+
+        /* point to the next name */
+        name = pointer_to_next_name(name, fns);
+      }
+
+      /* get the position of the next directory data block */
+      directory_data_block_position = directory_data_block->next_block;
+      /* free the current block because we finished with it */
+      free(directory_data_block);
+    }
+
+
+    /* check if the directory has been emptied and is to be removed */
+    if (number_of_sub_entities_in_directory(remove_entity, fns) == 2 && flag_r)
+    {
+      /* remove the data blocks of the directory */
+      int retval = remove_MDS_blocks(fd, my_superblock, holes, remove_entity);
+      /* check for errors */
+      if (!retval)
+      {
+        return 0;
+      }
+
+      /* remove the MDS of the directory */
+      retval = insert_hole(holes, remove_offset, remove_offset + sizeof(MDS), fd);
+      /* check for errors */
+      if (!retval)
+      {
+        return 0;
+      }
+      /* inform the superblock */
+      my_superblock->current_size -= sizeof(MDS);
+
+      /* remove the pair (<name, offset>) from the parent directory in order to
+         fully erase the existance of the directory */
+      retval = remove_pair_from_directory(fd, my_superblock, holes, parent_entity, parent_offset, remove_offset);
+      /* check for errors */
+      if (!retval)
+      {
+        return 0;
+      }
+
+      /* update the parent MDS of the removal of the pair */
+      retval = set_MDS(parent_entity, fd, parent_offset);
+      /* check for errors */
+      if (!retval)
+      {
+        return 0;
+      }
+
+    }
+    /* else, just update the MDS in the cfs */
+    else
+    {
+      int retval = set_MDS(remove_entity, fd, remove_offset);
+      /* if set_MDS fails */
+      if (!retval)
+      {
+        return 0;
+      }
+    }
+
+
   }
   /* if the entity to be removed is a file */
   else if (remove_entity->type == FILE)

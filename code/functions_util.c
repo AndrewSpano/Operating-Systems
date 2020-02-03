@@ -988,7 +988,6 @@ int remove_pair_from_directory(int fd, superblock* my_superblock, hole_map* hole
 
     /* set the block with the new pair */
     int retval = set_Block(block_that_contains_offset, fd, block_size, position_of_block_that_contains_offset);
-    free(block_that_contains_offset);
     /* if set_Block() fails */
     if (!retval)
     {
@@ -1024,7 +1023,7 @@ int remove_pair_from_directory(int fd, superblock* my_superblock, hole_map* hole
       }
 
       /* a new hole has been created with the removal of the last block */
-      insert_hole(holes, position_of_block_that_contains_offset, position_of_block_that_contains_offset + block_size, fd);
+      insert_hole(holes, position_of_last_block, position_of_last_block + block_size, fd);
       my_superblock->current_size -= block_size;
       directory->blocks_using--;
     }
