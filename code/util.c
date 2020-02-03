@@ -294,7 +294,7 @@ int get_approval(char* source, char* destination, const char* operation)
   char answer[MAX_BUFFER_SIZE] = {0};
   get_nth_string(answer, ask_option, 1);
 
-  while (strcmp(answer, "Y") && strcmp(answer, "Yes") && strcmp(answer, "YES") && strcmp(answer, "yes") && strcmp(answer, "N") && strcmp(answer, "No") && strcmp(answer, "NO") && strcmp(answer, "no\n"))
+  while (strcmp(answer, "Y") && strcmp(answer, "y") && strcmp(answer, "Yes") && strcmp(answer, "YES") && strcmp(answer, "yes") && strcmp(answer, "N") && strcmp(answer, "n") && strcmp(answer, "No") && strcmp(answer, "NO") && strcmp(answer, "no\n"))
   {
     printf("Unknown option entered. Please re-enter your option.\n");
     memset(ask_option, 0, MAX_BUFFER_SIZE);
@@ -304,7 +304,7 @@ int get_approval(char* source, char* destination, const char* operation)
     get_nth_string(answer, ask_option, 1);
   }
 
-  if (!strcmp(answer, "N\n") || !strcmp(answer, "No\n") || !strcmp(answer, "NO\n") || !strcmp(answer, "no\n"))
+  if (!strcmp(answer, "N\n") || !strcmp(answer, "n") || !strcmp(answer, "No\n") || !strcmp(answer, "NO\n") || !strcmp(answer, "no\n"))
   {
     return 0;
   }

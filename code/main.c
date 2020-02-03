@@ -1092,6 +1092,7 @@ int main(int argc, char* argv[])
 
         /* counter used later */
         int start_of_sources = index;
+
         /* iterate to find the destination folder */
         while (exists)
         {
@@ -1104,6 +1105,9 @@ int main(int argc, char* argv[])
           printf("Error input: you must give at least 2 files; 1 source and 1 destination/directory.\n");
           break;
         }
+
+        /* counter used later */
+        int total_sources = index - start_of_sources - 1;
 
         /* go to the last string of the buffer */
         index--;
@@ -1179,9 +1183,26 @@ int main(int argc, char* argv[])
             printf("Error input: the entity \"%s\" can't be renamed because the directory \"%s\" has reached its limit of sub - entities.\n", rename, destination_path);
             break;
           }
-          else if (name_exists_in_directory(fd, destination_directory, block_size, fns, rename))
+
+          /* check for another error */
+          int retval = name_exists_in_directory(fd, destination_directory, block_size, fns, rename);
+          if (retval == 0)
           {
-            printf("Error input: the directory \"%s\" already contains an entity named \"%s\".\n", destination_path, rename);
+            free(destination_directory);
+            printf("Some unexpected error occured from name_exists_in_directory() when called from main() case cfs_mv.\n");
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+          if (retval == 1)
+          {
+            if (destination_path[0] == 0)
+            {
+              printf("Error input: the current directory already contains an entity named \"%s\".\n", rename);
+            }
+            else
+            {
+              printf("Error input: the directory \"%s\" already contains an entity named \"%s\".\n", destination_path, rename);
+            }
             free(destination_directory);
             break;
           }
@@ -1198,15 +1219,154 @@ int main(int argc, char* argv[])
           }
 
           /* rename the file into another location */
-          // int retval = cfs_mv();
+          retval = cfs_mv(fd, my_superblock, holes, source, source_offset, destination_directory, destination_directory_offset, rename);
           /* free up the allocated space */
           free(source);
           free(destination_directory);
+          /* check for unexpected errors */
+          if (!retval)
+          {
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
         }
         /* else, we have to move many entities to a common destination */
         else
         {
 
+          /* get the offset of the directory destination */
+          off_t destination_directory_offset = get_offset_from_path(fd, my_superblock, list, destination_path);
+          /* check for errors */
+          if (destination_directory_offset == (off_t) 0)
+          {
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+          else if (destination_directory_offset == (off_t) -1)
+          {
+            printf("Error input: The destination directory \"%s\" does not exist.\n", destination_path);
+            break;
+          }
+
+          /* get the destination directory */
+          MDS* destination_directory = get_MDS(fd, destination_directory_offset);
+          /* if get_MDS() fails */
+          if (destination_directory == NULL)
+          {
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+          /* else if some kind of error occurs */
+          else if (destination_directory->type != DIRECTORY)
+          {
+            free(destination_directory);
+            printf("Error input: the entity \"%s\" is not a directory.\n", destination_path);
+            break;
+          }
+          else if (number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files && !is_root_offset(my_superblock, destination_directory_offset))
+          {
+            free(destination_directory);
+            printf("Error input: The directory \"%s\" has reached its limit of sub - entities.\n", destination_path);
+            break;
+          }
+
+
+
+          /* iterate through all the sources */
+          for (index = start_of_sources; index < start_of_sources + total_sources; index++)
+          {
+            /* get the source */
+            get_nth_string(read_input, buffer, index);
+
+            /* get the offset of the source entity */
+            off_t source_offset = get_offset_from_path(fd, my_superblock, list, read_input);
+            /* check for errors */
+            if (source_offset == (off_t) 0)
+            {
+              FREE_AND_CLOSE(my_superblock, holes, list, fd);
+              return EXIT_FAILURE;
+            }
+            else if (source_offset == (off_t) -1)
+            {
+              printf("Error input: The source entity \"%s\" does not exist.\n", read_input);
+              /* reset the read input */
+              memset(read_input, 0, MAX_BUFFER_SIZE);
+              continue;
+            }
+
+            /* ask user if he wants to move the specific file */
+            if (flag_i)
+            {
+              if (!get_approval(read_input, destination_path, "move"))
+              {
+                /* reset the array used to read the user input */
+                memset(read_input, 0, MAX_BUFFER_SIZE);
+                continue;
+              }
+            }
+
+            /* get the name of the entity */
+            char name[MAX_BUFFER_SIZE] = {0};
+            extract_last_entity_from_path(read_input, name);
+            /* check for errors that may occur */
+            if (number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files && !is_root_offset(my_superblock, destination_directory_offset))
+            {
+              printf("Error input: the entity \"%s\" can't be moved because the directory \"%s\" has reached its limit of sub - entities.\n", read_input, destination_path);
+              break;
+            }
+
+            /* check for more errors */
+            int retval = name_exists_in_directory(fd, destination_directory, block_size, fns, name);
+            if (retval == 0)
+            {
+              free(destination_directory);
+              printf("Some unexpected error occured from name_exists_in_directory() when called from main() case cfs_mv.\n");
+              FREE_AND_CLOSE(my_superblock, holes, list, fd);
+              return EXIT_FAILURE;
+            }
+            if (retval == 1)
+            {
+              if (destination_path[0] == 0)
+              {
+                printf("Error input: the current directory already contains an entity named \"%s\".\n", name);
+              }
+              else
+              {
+                printf("Error input: the directory \"%s\" already contains an entity named \"%s\".\n", destination_path, name);
+              }
+              /* reset the read input */
+              memset(read_input, 0, MAX_BUFFER_SIZE);
+              continue;
+            }
+
+            /* get the source */
+            MDS* source = get_MDS(fd, source_offset);
+            /* if get_MDS() fails */
+            if (source == NULL)
+            {
+              free(destination_directory);
+              FREE_AND_CLOSE(my_superblock, holes, list, fd);
+              return EXIT_FAILURE;
+            }
+
+            /* rename the file into another location */
+            retval = cfs_mv(fd, my_superblock, holes, source, source_offset, destination_directory, destination_directory_offset, name);
+            /* free up the allocated space */
+            free(source);
+            /* check for unexpected errors */
+            if (!retval)
+            {
+              FREE_AND_CLOSE(my_superblock, holes, list, fd);
+              return EXIT_FAILURE;
+            }
+
+            /* reset the read input */
+            memset(read_input, 0, MAX_BUFFER_SIZE);
+          }
+
+
+          /* free up the allocated space */
+          free(destination_directory);
         }
 
         break;

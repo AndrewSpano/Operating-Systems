@@ -1325,6 +1325,89 @@ int cfs_ln(int fd, superblock* my_superblock, hole_map* holes, Stack_List* list,
 
 
 
+int cfs_mv(int fd, superblock* my_superblock, hole_map* holes, MDS* source, off_t source_offset, MDS* destination, off_t destination_offset, char* destination_name)
+{
+  /* get some important sizes */
+  size_t block_size = my_superblock->block_size;
+  size_t fns = my_superblock->filename_size;
+  size_t size_of_pair = fns + sizeof(off_t);
+
+
+  /* get the parent directory of the source in order to remove it */
+  off_t parent_offset = source->parent_offset;
+
+  /* get the parent */
+  MDS* parent = get_MDS(fd, parent_offset);
+  /* check for errors */
+  DIE_IF_NULL(parent);
+
+
+  /* remove the source from the parent directory */
+  int retval = remove_pair_from_directory(fd, my_superblock, holes, parent, parent_offset, source_offset);
+  /* free the parent because we don't need it anymore */
+  free(parent);
+  /* if remove_pair_from_directory() failed */
+  if (!retval)
+  {
+    return 0;
+  }
+
+
+  /* insert the pair <source, offset> in the destination directory */
+  retval = insert_pair(fd, holes, destination, destination_name, source_offset, block_size, fns);
+  if (retval == 0)
+  {
+    printf("insert_pair() error when called from cfs_mv()\n");
+    return 0;
+  }
+  /* if retval == 1, it means that we allocated a new block to place the pair <name, offset> */
+  else if (retval == 1)
+  {
+    destination->blocks_using++;
+    my_superblock->current_size += block_size;
+  }
+
+  /* calculate the attributes that will be added to the current directory */
+  destination->size += size_of_pair;
+
+
+  /* update the destination directory */
+  retval = set_MDS(destination, fd, destination_offset);
+  if (!retval)
+  {
+    return 0;
+  }
+
+  /* inform the source directory of the movement */
+  source->parent_offset = destination_offset;
+  /* update the source directory */
+  retval = set_MDS(source, fd, source_offset);
+  if (!retval)
+  {
+    return 0;
+  }
+
+
+  /* update the superblock */
+  retval = set_superblock(my_superblock, fd);
+  if (!retval)
+  {
+    return 0;
+  }
+
+  /* update the hole map */
+  retval = set_hole_map(holes, fd);
+  if (!retval)
+  {
+    return 0;
+  }
+
+  /* return 1 if everything goes smoothly */
+  return 1;
+}
+
+
+
 int cfs_rm(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entity, off_t remove_offset, MDS* parent_entity, off_t parent_offset, int flag_i, int flag_r, char* remove_path)
 {
   /* important sizes */
