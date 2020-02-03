@@ -666,7 +666,7 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
   /* get some important sizes */
   size_t block_size = my_superblock->block_size;
   size_t fns = my_superblock->filename_size;
-
+  size_t size_of_pair = fns + sizeof(off_t);
 
 
   /* is the entity to be copied is a file */
@@ -758,6 +758,7 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
 
     /* insert pair <source_name, offset> to the destination directory */
     retval = insert_pair(fd, holes, destination_directory, source_name, position_of_new_file, block_size, fns);
+    /* if insert_pair() fails */
     if (retval == 0)
     {
       return 0;
@@ -768,6 +769,8 @@ int cfs_cp(int fd, superblock* my_superblock, hole_map* holes, MDS* source, char
       my_superblock->current_size += block_size;
       destination_directory->blocks_using++;
     }
+    /* inform the size field */
+    destination_directory->size += size_of_pair;
 
 
     /* inform the superblock */
@@ -1333,6 +1336,8 @@ int cfs_rm(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entit
   if (remove_entity->type == DIRECTORY)
   {
 
+    // printf("\n\nBEFORE DELETION\n\nDirectory name = %s, number of sub entities = %u\n\n\n", remove_path, number_of_sub_entities_in_directory(remove_entity, fns));
+
     /* get the position of the data blocks of the source directory */
     off_t directory_data_block_position = remove_entity->first_block;
     /* iterate through all the directory data blocks */
@@ -1377,11 +1382,13 @@ int cfs_rm(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entit
         strcat(temp_remove_path_buffer, "/");
         strcat(temp_remove_path_buffer, name);
 
-        /* ask user if he wants to remove the specific file */
+        /* ask user if he wants to remove the specific entity */
         if ((new_destination->type == FILE || (new_destination->type == DIRECTORY && flag_r)) && flag_i)
         {
           if (!get_approval_2(temp_remove_path_buffer, "remove"))
           {
+            /* free up the allocated space */
+            free(new_destination);
             /* point to the next name */
             name = pointer_to_next_name(name, fns);
             /* go to the next entry */
@@ -1389,16 +1396,23 @@ int cfs_rm(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entit
           }
         }
 
+        printf("\n\nBEFORE DELETION\n\nDirectory name = %s, number of sub entities = %u\n\n\n", remove_path, number_of_sub_entities_in_directory(remove_entity, fns));
 
-        /* remove the entity recursively */
-        int retval = cfs_rm(fd, my_superblock, holes, new_destination, *entity_offset, remove_entity, remove_offset, flag_i, flag_r, temp_remove_path_buffer);
-        /* if for some unexpected reason the functions fails */
-        if (!retval)
+        /* if the destination is a file, or the flag -r has been given */
+        if (new_destination->type == FILE || flag_r)
         {
-          free(directory_data_block);
-          free(new_destination);
-          return 0;
+          /* remove the entity recursively */
+          int retval = cfs_rm(fd, my_superblock, holes, new_destination, *entity_offset, remove_entity, remove_offset, flag_i, flag_r, temp_remove_path_buffer);
+          /* if for some unexpected reason the functions fails */
+          if (!retval)
+          {
+            free(directory_data_block);
+            free(new_destination);
+            return 0;
+          }
         }
+
+        printf("\n\nAFTER DELETION\n\nDirectory name = %s, number of sub entities = %u\n\n\n", remove_path, number_of_sub_entities_in_directory(remove_entity, fns));
 
         /* free the allocated memory */
         free(new_destination);
@@ -1413,6 +1427,8 @@ int cfs_rm(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entit
       free(directory_data_block);
     }
 
+
+    // printf("\n\nAFTER DELETION\n\nDirectory name = %s, number of sub entities = %u\n\n\n", remove_path, number_of_sub_entities_in_directory(remove_entity, fns));
 
     /* check if the directory has been emptied and is to be removed */
     if (number_of_sub_entities_in_directory(remove_entity, fns) == 2 && flag_r)
@@ -1504,6 +1520,12 @@ int cfs_rm(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entit
       return 0;
     }
 
+  }
+  /* catch errors */
+  else
+  {
+    printf("Error: the entity is neither a FILE nor a DIRECTORY. Congratulations, ELOUSES\n");
+    return 0;
   }
 
 

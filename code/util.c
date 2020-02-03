@@ -291,14 +291,14 @@ int get_approval(char* source, char* destination, const char* operation)
   printf("Do you want to %s the entity \"%s\" to the destination \"%s\"? Enter Y for yes, or N for no.\n", operation, source, destination);
   fgets(ask_option, MAX_BUFFER_SIZE, stdin);
 
-  while (strcmp(ask_option, "Y") && strcmp(ask_option, "Yes") && strcmp(ask_option, "YES") && strcmp(ask_option, "yes") && strcmp(ask_option, "N") && strcmp(ask_option, "No") && strcmp(ask_option, "No") && strcmp(ask_option, "no"))
+  while (strcmp(ask_option, "Y\n") && strcmp(ask_option, "Yes\n") && strcmp(ask_option, "YES\n") && strcmp(ask_option, "yes\n") && strcmp(ask_option, "N\n") && strcmp(ask_option, "No\n") && strcmp(ask_option, "No\n") && strcmp(ask_option, "no\n"))
   {
     printf("Unknown option entered. Please re-enter your option.\n");
     memset(ask_option, 0, MAX_BUFFER_SIZE);
     fgets(ask_option, MAX_BUFFER_SIZE, stdin);
   }
 
-  if (!strcmp(ask_option, "N") || !strcmp(ask_option, "No") || !strcmp(ask_option, "No") || !strcmp(ask_option, "no"))
+  if (!strcmp(ask_option, "N\n") || !strcmp(ask_option, "No\n") || !strcmp(ask_option, "No\n") || !strcmp(ask_option, "no\n"))
   {
     return 0;
   }
@@ -503,7 +503,7 @@ int get_cfs_rm_parameters(const char buffer[], int* flag_i, int* flag_r)
     int exists = contains_unknown_flag(str, flags);
     if (exists)
     {
-      printf("The parameter '%c' given in the option %s does not exist. Available options are -i and -R\n", str[exists], str);
+      printf("The parameter '%c' given in the option %s does not exist. Available options are -i and -R.\n", str[exists], str);
       return 0;
     }
     if (char_exists_in_string(str, 'i'))

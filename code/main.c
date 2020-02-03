@@ -542,7 +542,6 @@ int main(int argc, char* argv[])
           index++;
           exists = get_nth_string(read_input, buffer, index);
         }
-
         /* check for error input */
         if (!exists)
         {
@@ -1060,48 +1059,140 @@ int main(int argc, char* argv[])
 
       case 10:
       {
-         print_hole_table(holes);
-        holes->holes_table[0].start = 100;
-        holes->holes_table[0].end = 200;
-        holes->current_hole_number = 1;
+        BREAK_IF_NO_FILE_OPEN(fd);
 
-        holes->holes_table[1].start = 300;
-        holes->holes_table[1].end = 400;
-        holes->current_hole_number++;
-
-        holes->holes_table[2].start = 700;
-        holes->holes_table[2].end = 1000;
-        holes->current_hole_number++;
-
-        holes->holes_table[3].start = 1300;
-        holes->holes_table[3].end = 1400;
-        holes->current_hole_number++;
-
-        holes->holes_table[4].start = 3500;
-        holes->holes_table[4].end = 0;
-        holes->current_hole_number++;
-
-        print_hole_table(holes);
-
-        insert_hole(holes, 0, 50, fd);
-        print_hole_table(holes);
-
-        insert_hole(holes, 200, 300, fd);
-        print_hole_table(holes);
-
-        insert_hole(holes, 600, 700, fd);
-        print_hole_table(holes);
+        /* get the parameters */
+        int flag_i = 0;
+        int valid_parameters = get_cfs_mv_parameters(buffer, &flag_i);
+        /* check for errors */
+        if (!valid_parameters)
+        {
+          break;
+        }
 
 
-        insert_hole(holes, 2400, 3500, fd);
-        print_hole_table(holes);
+        /* array of characters used to read the user input */
+        char read_input[MAX_BUFFER_SIZE] = {0};
 
-        insert_hole(holes, 400, 450, fd);
-        print_hole_table(holes);
 
-        insert_hole(holes, 2100, 2300, fd);
-        print_hole_table(holes);
+        /* skip the parameter (options) strings */
+        int index = 2;
+        int exists = get_nth_string(read_input, buffer, index);
+        while (exists && is_parameter(read_input))
+        {
+          index++;
+          exists = get_nth_string(read_input, buffer, index);
+        }
+        /* check for input errors */
+        if (!exists)
+        {
+          printf("Error input: missing file operands.\n");
+          break;
+        }
 
+        /* counter used later */
+        int start_of_sources = index;
+        /* iterate to find the destination folder */
+        while (exists)
+        {
+          index++;
+          exists = get_nth_string(read_input, buffer, index);
+        }
+        /* check for errors */
+        if (index == start_of_sources + 1)
+        {
+          printf("Error input: you must give at least 2 files; 1 source and 1 destination/directory.\n");
+          break;
+        }
+
+        /* go to the last string of the buffer */
+        index--;
+        /* get the last string of the buffer */
+        char destination_path[MAX_BUFFER_SIZE] = {0};
+        get_nth_string(destination_path, buffer, index);
+
+
+        /* if the above condition is true, then we have rename */
+        if (index == start_of_sources + 1)
+        {
+
+          /* get the source path */
+          get_nth_string(read_input, buffer, start_of_sources);
+
+          /* get the offset of the source entity */
+          off_t source_offset = get_offset_from_path(fd, my_superblock, list, read_input);
+          /* check for errors */
+          if (source_offset == (off_t) 0)
+          {
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+          else if (source_offset == (off_t) -1)
+          {
+            printf("Error input: the entity \"%s\" does not exist.\n", read_input);
+            break;
+          }
+          else if (is_root_offset(my_superblock, source_offset))
+          {
+            printf("Error input: /root directory is the only directory that can't be renamed. Therefore the entity \"%s\" can't be renamed.\n", read_input);
+            break;
+          }
+
+
+          /* get the new name of the entity */
+          char rename[MAX_BUFFER_SIZE] = {0};
+          extract_last_entity_from_path(destination_path, rename);
+
+
+          /* get the offset of the directory destination */
+          off_t destination_directory_offset = get_offset_from_path(fd, my_superblock, list, destination_path);
+          /* check for errors */
+          if (destination_directory_offset == (off_t) 0)
+          {
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+          else if (destination_directory_offset == (off_t) -1)
+          {
+            printf("Error input: the entity \"%s\" can't be renamed because the directory \"%s\" does not exist.\n", rename, destination_path);
+            break;
+          }
+
+          /* get the destination directory */
+          MDS* destination_directory = get_MDS(fd, destination_directory_offset);
+          /* if get_MDS() fails */
+          if (destination_directory == NULL)
+          {
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
+          /* else if some kind of error occurs */
+          else if (destination_directory->type != DIRECTORY)
+          {
+            free(destination_directory);
+            printf("Error input: the entity \"%s\" can't be renamed because the entity \"%s\" is not a directory.\n", rename, destination_path);
+            break;
+          }
+          else if (number_of_sub_entities_in_directory(destination_directory, fns) == max_number_of_files && !is_root_offset(my_superblock, destination_directory_offset))
+          {
+            free(destination_directory);
+            printf("Error input: the entity \"%s\" can't be renamed because the directory \"%s\" has reached its limit of sub - entities.\n", rename, destination_path);
+            break;
+          }
+          else if (name_exists_in_directory(fd, destination_directory, block_size, fns, rename))
+          {
+            printf("Error input: the directory \"%s\" already contains an entity named \"%s\".\n", destination_path, rename);
+            free(destination_directory);
+            break;
+          }
+
+
+        }
+        /* else, we have to move many entities to a common destination */
+        else
+        {
+
+        }
 
         break;
       }
