@@ -1197,7 +1197,11 @@ int main(int argc, char* argv[])
             return EXIT_FAILURE;
           }
 
-          
+          /* rename the file into another location */
+          // int retval = cfs_mv();
+          /* free up the allocated space */
+          free(source);
+          free(destination_directory);
         }
         /* else, we have to move many entities to a common destination */
         else

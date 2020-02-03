@@ -300,8 +300,8 @@ int get_approval(char* source, char* destination, const char* operation)
     memset(ask_option, 0, MAX_BUFFER_SIZE);
     fgets(ask_option, MAX_BUFFER_SIZE, stdin);
 
-    memset(answer, 0 MAX_BUFFER_SIZE);
-    get_nth_string(answe, ask_option, 1);
+    memset(answer, 0, MAX_BUFFER_SIZE);
+    get_nth_string(answer, ask_option, 1);
   }
 
   if (!strcmp(answer, "N\n") || !strcmp(answer, "No\n") || !strcmp(answer, "NO\n") || !strcmp(answer, "no\n"))
