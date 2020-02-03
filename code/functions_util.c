@@ -1001,7 +1001,7 @@ int remove_pair_from_directory(int fd, superblock* my_superblock, hole_map* hole
     if (last_block->bytes_used == 0)
     {
       /* get the previous block in order to set to 0 its "next_block" attribute */
-      Block *previous_of_last_block = get_Block(fd, block_size, position_of_previous_of_last_block);
+      Block* previous_of_last_block = get_Block(fd, block_size, position_of_previous_of_last_block);
       /* if get_Block() fails */
       if (previous_of_last_block == NULL)
       {

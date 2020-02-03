@@ -1465,21 +1465,8 @@ int cfs_rm(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entit
         strcat(temp_remove_path_buffer, "/");
         strcat(temp_remove_path_buffer, name);
 
-        /* ask user if he wants to remove the specific entity */
-        if ((new_destination->type == FILE || (new_destination->type == DIRECTORY && flag_r)) && flag_i)
-        {
-          if (!get_approval_2(temp_remove_path_buffer, "remove"))
-          {
-            /* free up the allocated space */
-            free(new_destination);
-            /* point to the next name */
-            name = pointer_to_next_name(name, fns);
-            /* go to the next entry */
-            continue;
-          }
-        }
 
-        printf("\n\nBEFORE DELETION\n\nDirectory name = %s, number of sub entities = %u\n\n\n", remove_path, number_of_sub_entities_in_directory(remove_entity, fns));
+        // printf("\n\nBEFORE DELETION\n\nDirectory name = %s, number of sub entities = %u\n\n\n", remove_path, number_of_sub_entities_in_directory(remove_entity, fns));
 
         /* if the destination is a file, or the flag -r has been given */
         if (new_destination->type == FILE || flag_r)
@@ -1495,7 +1482,7 @@ int cfs_rm(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entit
           }
         }
 
-        printf("\n\nAFTER DELETION\n\nDirectory name = %s, number of sub entities = %u\n\n\n", remove_path, number_of_sub_entities_in_directory(remove_entity, fns));
+        // printf("\n\nAFTER DELETION\n\nDirectory name = %s, number of sub entities = %u\n\n\n", remove_path, number_of_sub_entities_in_directory(remove_entity, fns));
 
         /* free the allocated memory */
         free(new_destination);
@@ -1568,23 +1555,40 @@ int cfs_rm(int fd, superblock* my_superblock, hole_map* holes, MDS* remove_entit
   /* if the entity to be removed is a file */
   else if (remove_entity->type == FILE)
   {
-    /* remove the data blocks of the file */
-    int retval = remove_MDS_blocks(fd, my_superblock, holes, remove_entity);
-    /* check for errors */
-    if (!retval)
+    int retval = 0;
+    /* if we are dealing with hard links */
+    if (remove_entity->number_of_hard_links > 1)
     {
-      return 0;
+      /* decrease the number of hard links */
+      remove_entity->number_of_hard_links--;
+      /* update the MDS of the entity */
+      retval = set_MDS(remove_entity, fd, remove_offset);
+      /* if set_MDS() fails */
+      if (!retval)
+      {
+        return 0;
+      }
     }
+    else
+    {
+      /* remove the data blocks of the file */
+      retval = remove_MDS_blocks(fd, my_superblock, holes, remove_entity);
+      /* check for errors */
+      if (!retval)
+      {
+        return 0;
+      }
 
-    /* remove the MDS of the file */
-    retval = insert_hole(holes, remove_offset, remove_offset + sizeof(MDS), fd);
-    /* check for errors */
-    if (!retval)
-    {
-      return 0;
+      /* remove the MDS of the file */
+      retval = insert_hole(holes, remove_offset, remove_offset + sizeof(MDS), fd);
+      /* check for errors */
+      if (!retval)
+      {
+        return 0;
+      }
+      /* inform the superblock */
+      my_superblock->current_size -= sizeof(MDS);
     }
-    /* inform the superblock */
-    my_superblock->current_size -= sizeof(MDS);
 
     /* remove the pair (<name, offset>) from the parent directory in order to
        fully erase the existance of the file */
