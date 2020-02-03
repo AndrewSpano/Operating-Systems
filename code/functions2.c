@@ -40,9 +40,7 @@ int get_nth_pair(MDS* mds, char** name, off_t* offset, int fd, int n)
   }
 
   char* ret_name = (char *) my_block->data;
-  // printf("first name: %s\n", ret_name);
   off_t* ret_offset = pointer_to_offset(ret_name, my_superblock->filename_size);
-  // printf("offset for name: %lu\n", *ret_offset);
 
   int j = 1;
   for (; j < n ; j++)
@@ -92,13 +90,8 @@ int get_size_of_directory(int fd, off_t offset)
   MDS* my_mds = get_MDS(fd, offset);
   Block* my_block = get_Block(fd, my_superblock->block_size, my_mds->first_block);
 
-
-  // size_t size_of_struct_variables = sizeof(Block);
-  // size_t size_for_pairs = my_superblock->block_size - size_of_struct_variables;
   size_t size_of_pair = my_superblock->filename_size + sizeof(off_t);
   size_t pairs_in_block = my_block->bytes_used / size_of_pair;
-  // size_t max_pairs = size_for_pairs / size_of_pair;
-  // if (max_pairs);
 
 
   char* ret_name = (char *) my_block->data; //.
@@ -222,7 +215,7 @@ int print_characteristics(int fd, off_t offset)
 
 int comparator(const void *p, const void *q) 
 { 
-  return strcmp(((pair *)p)->name, ((pair*)q)->name); //-
+  return strcmp(((pair *)p)->name, ((pair*)q)->name); 
 } 
 
 
@@ -233,12 +226,8 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
   MDS* my_mds = get_MDS(fd, offset);
   Block* my_block = get_Block(fd, my_superblock->block_size, my_mds->first_block);
 
-  size_t size_of_struct_variables = sizeof(Block);
-  size_t size_for_pairs = my_superblock->block_size - size_of_struct_variables;
   size_t size_of_pair = my_superblock->filename_size + sizeof(off_t);
   size_t pairs_in_block = my_block->bytes_used / size_of_pair;
-  size_t max_pairs = size_for_pairs / size_of_pair;
-  if (max_pairs);
 
   if (flag_u)
   {
@@ -697,14 +686,10 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
       }   
     } 
 
-    // int k = 0; 
-    // for (; k < size_of_table; k++) 
-    //   printf("%s %lu\n", table[k].name, table[k].offset);
-
+  
     // printf("sorting array by name\n");
     qsort((void*)table, size_of_table, sizeof(pair), comparator); 
     
-    //////same as flag_u//////
     if (flag_a)
     {
       if (flag_l)
@@ -822,11 +807,7 @@ int cfs_ls(int fd, off_t offset, int flag_a, int flag_r, int flag_l, int flag_u,
         }
       }
     }
-    ///////////
 
-    // k = 0; 
-    // for (; k < size_of_table; k++) 
-    //   printf("%s %lu\n", table[k].name, table[k].offset);
   
     // printf("\n");
     int k = 0; 
@@ -914,6 +895,6 @@ int insert_hole(hole_map* holes, off_t my_start, off_t my_end, int fd)
 
 
   }//for
-  // printf("den bike pouthena sad\n");
+  // printf("end\n");
   return 0;
 }
