@@ -1144,21 +1144,6 @@ int main(int argc, char* argv[])
         /* iterate through all the destinations */
         while (exists)
         {
-          /* ask user if he wants to remove the specific file */
-          if (flag_i)
-          {
-            if (!get_approval_2(read_input, "remove"))
-            {
-              /* reset the array used to read the user input */
-              memset(read_input, 0, MAX_BUFFER_SIZE);
-              /* get the next entry */
-              index++;
-              exists = get_nth_string(read_input, buffer, index);
-              /* go to the next entry */
-              continue;
-            }
-          }
-
           /* get the offset of the entity to be removed */
           off_t destination_offset = get_offset_from_path(fd, my_superblock, list, read_input);
           /* check for errors */
@@ -1169,7 +1154,6 @@ int main(int argc, char* argv[])
           }
           else if (destination_offset == (off_t) -1)
           {
-            printf("Error input: the entity \"%s\" does not exist.\n", read_input);
             /* reset the input read buffer */
             memset(read_input, 0, MAX_BUFFER_SIZE);
             /* get the next entry */
@@ -1190,6 +1174,20 @@ int main(int argc, char* argv[])
             continue;
           }
 
+          /* ask user if he wants to remove the specific file */
+          if (flag_i)
+          {
+            if (!get_approval_2(read_input, "remove"))
+            {
+              /* reset the array used to read the user input */
+              memset(read_input, 0, MAX_BUFFER_SIZE);
+              /* get the next entry */
+              index++;
+              exists = get_nth_string(read_input, buffer, index);
+              /* go to the next entry */
+              continue;
+            }
+          }
 
           /* get the destination entity */
           MDS* destination_entity = get_MDS(fd, destination_offset);
@@ -1214,17 +1212,21 @@ int main(int argc, char* argv[])
           }
 
 
-          // /* remove the entity */
-          // int retval = cfs_rm();
-          // /* check for errors */
-          // if (!retval)
-          // {
-          //   free(destination_entity);
-          //   free(parent_directory);
-          //   FREE_AND_CLOSE(my_superblock, holes, list, fd);
-          //   return EXIT_FAILURE;
-          // }
+          /* remove the entity */
+          int retval = cfs_rm(fd, my_superblock, holes, destination_entity, destination_offset, parent_directory, parent_offset, flag_i, flag_r, read_input);
+          /* check for errors */
+          if (!retval)
+          {
+            free(destination_entity);
+            free(parent_directory);
+            FREE_AND_CLOSE(my_superblock, holes, list, fd);
+            return EXIT_FAILURE;
+          }
 
+
+          /* free up the allocated space */
+          free(parent_directory);
+          free(destination_entity);
 
           /* reset the input read buffer */
           memset(read_input, 0, MAX_BUFFER_SIZE);

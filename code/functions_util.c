@@ -481,7 +481,7 @@ off_t get_offset_from_path(int fd, superblock* my_superblock, Stack_List* list, 
     if (retval == 0)
     {
       Stack_List_Destroy(&file_path_list);
-      return (off_t) 0;
+      return (off_t) -1;
     }
   }
 
@@ -524,7 +524,7 @@ off_t get_offset_from_path(int fd, superblock* my_superblock, Stack_List* list, 
     }
     free(destination_file_directory);
     Stack_List_Destroy(&file_path_list);
-    return (off_t) 0;
+    return (off_t) -1;
   }
 
 
