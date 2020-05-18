@@ -1,8 +1,0 @@
--islets 3
--spots_per_islet 2
--max_capacity_of_bus 100
--max_park_period 20.3
--max_man_time 15.5
--state_time 20
--statistics_time 10
--number_of_buses 25
