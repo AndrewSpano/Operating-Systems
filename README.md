@@ -1,4 +1,11 @@
-# Askisi4_Delis
+# Operating Systems Assignments
+
+In this repo I have the 4 assignments that I did for the class K22 Operating Systems of the Department of Informatics and Telecommunications.
+
+- Assignment1: Voting Simulation (basically implement data structures like a RBTree or a Bloom filter.
+- Assignment2: Sorting via different processes (basically to familiarize with different system calls like fork() exec() and other pipes related stuff).
+- Assignment 3: Bus station Simulation (basically implementation of a buses as processes and a bus_station manager that used shared memory between processes, then I would consider it.
+- Assignment 4: Implementation of a cfs (container file system). Basically the assigment to create a whole file system inside one file, and then use this file like it as a directory.
 
 Programmatistic Assignment in Operating Systems: Implement a Container File System (cfs) in C. Basically you can create a file and it works just like a whole file system. You can create directories, (empty) files, rename them, concatenate them, delete them, copy from one location to another, etc.. You can also import and export files/directories to the linux file system.
 
