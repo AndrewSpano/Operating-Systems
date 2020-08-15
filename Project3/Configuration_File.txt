@@ -5,4 +5,4 @@
 -max_man_time 15.5
 -state_time 20
 -statistics_time 10
--number_of_buses 25
+-number_of_buses 15
